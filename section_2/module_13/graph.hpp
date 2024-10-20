@@ -110,13 +110,21 @@ class Graph
          */
         bool edge_exists(int v1_id, int v2_id) const
         {
+            if(v1_id < 0 || v1_id >= SIZE)
+                throw std::out_of_range();
+            if(v2_id < 0 || v2_id >= SIZE)
+                throw std::out_of_range();
             return matrix[v1_id][v2_id] > 0;
         }
 
         int get_edge(T v1, T v2) const
         {
             int v1_id = this->find_vertex(v1);
+            if(v1_id < 0)
+                throw std::out_of_range("There is no vertex v1!");
             int v2_id = this->find_vertex(v2);
+            if(v2_id < 0)
+                throw std::out_of_range("There is no vertex v2!");
             return this->matrix[v1_id][v2_id];
         }
 
@@ -130,7 +138,11 @@ class Graph
         void set_edge(const T& v1, const T& v2, int weight)
         {
             int v1_id = this->find_vertex(v1);
+            if(v1_id < 0)
+                throw std::out_of_range("There is no vertex v1!");
             int v2_id = this->find_vertex(v2);
+            if(v2_id < 0)
+                throw std::out_of_range("There is no vertex v2!");
             this->matrix[v1_id][v2_id] = weight;
             this->matrix[v2_id][v1_id] = weight;
         }
