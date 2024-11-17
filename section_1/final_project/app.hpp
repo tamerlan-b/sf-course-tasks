@@ -8,7 +8,7 @@ class App
 {
     public:
         App(std::string users_path, std::string messages_path);
-        ~App(){}
+        virtual ~App() = default;
         void run();
         int create_user();
         bool is_login_available(std::string& login);

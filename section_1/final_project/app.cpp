@@ -91,11 +91,8 @@ App::App(std::string users_path, std::string messages_path)
 
 bool App::is_login_available(std::string& login)
 {
-    for (User &u : this->users)
-        if(u.check_login(login))
-            return false;
-    return true;
-    
+    auto predicate = [&login](User &u){ return u.check_login(login);};
+    return std::none_of(this->users.begin(), this->users.end(), predicate);
 }
 
 int App::create_user()

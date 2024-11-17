@@ -8,9 +8,9 @@ class User
         std::string login;
         std::string pass_hash;   // Hash
     public:
-        User() noexcept{}
+        User() noexcept = default;
         User(std::string login, std::string password) noexcept;
-        virtual ~User(){}
+        virtual ~User() = default;
         bool is_empty() const noexcept;
         bool check_login(std::string& login);
         bool check_password(std::string& password);

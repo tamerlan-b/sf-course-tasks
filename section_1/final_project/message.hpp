@@ -8,9 +8,9 @@
 class Message
 {
     public:
-        Message(){}
+        Message() = default;
         Message(std::string sender, std::string receiver, std::string text, DateTime datetime);
-        ~Message(){}
+        virtual ~Message() = default;
         bool is_empty() const noexcept;
         std::string sender;
         std::string receiver;
