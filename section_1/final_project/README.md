@@ -45,9 +45,17 @@
 - [PicoSHA2](https://github.com/okdshin/PicoSHA2)
 
 ### Компиляция и запуск программы
+
+1. Через bash-скрипт
 ```bash
 chmod +x run.sh
 ./run.sh
+```
+2. С помощью Makefile
+```bash
+make
+make clean
+./final_project
 ```
 
 ### Пример использования
