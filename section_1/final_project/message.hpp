@@ -3,7 +3,7 @@
 #include <string>
 #include "user.hpp"
 #include "datetime.hpp"
-#include "3rd-party/nlohmann/json.hpp"
+#include <fstream>
 
 class Message
 {
@@ -17,5 +17,6 @@ class Message
         std::string text;
         DateTime datetime;
 
-        NLOHMANN_DEFINE_TYPE_INTRUSIVE(Message, sender, receiver, text, datetime)
+        friend std::fstream& operator >>(std::fstream& is, Message& msg);
+	    friend std::ostream& operator <<(std::ostream& os, const Message& msg);
 };

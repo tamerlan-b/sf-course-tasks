@@ -41,7 +41,7 @@
 
 ### Использованные библиотеки
 - [termcolor](https://github.com/ikalnytskyi/termcolor/tree/master)
-- [nlohmann/json](https://github.com/nlohmann/json)
+- ~~[nlohmann/json](https://github.com/nlohmann/json)~~
 - [PicoSHA2](https://github.com/okdshin/PicoSHA2)
 
 ### Компиляция и запуск программы
@@ -63,7 +63,7 @@ make clean
 ![chat demo](media/chat_demo.gif)
 
 ### TODO:
-- [ ] Дополнять файлы с пользователями и историей, а не перезаписывать с нуля при добавлении нового элемента
+- [x] Дополнять файлы с пользователями и историей, а не перезаписывать с нуля при добавлении нового элемента
 - [ ] Улучшить TUI
 - [ ] Шифровать сообщения, хранящиеся в файле _messages.json_
 - [ ] Добавить возможность работы по сети

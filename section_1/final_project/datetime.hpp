@@ -1,8 +1,8 @@
 #pragma once
 
 #include <ctime>
-#include "3rd-party/nlohmann/json.hpp"
 #include <iostream>
+#include <fstream>
 
 struct Date
 {
@@ -13,9 +13,9 @@ struct Date
     Date() = default;
     Date(std::tm* tm): year(tm->tm_year + 1900), month(tm->tm_mon + 1), day(tm->tm_mday)
     {}
-    friend std::ostream& operator << (std::ostream& os, const Date& d);
 
-    NLOHMANN_DEFINE_TYPE_INTRUSIVE(Date, year, month, day)
+    friend std::fstream& operator >>(std::fstream& is, Date& d);
+    friend std::ostream& operator <<(std::ostream& os, const Date& d);
 };
 
 struct Time
@@ -27,13 +27,8 @@ struct Time
     Time(std::tm* tm): hour(tm->tm_hour), min(tm->tm_min), sec(tm->tm_sec)
     {}
 
-    friend std::ostream& operator << (std::ostream& os, const Time& t);
-
-    // operator std::tm*() const
-    // {
-    // }
-
-    NLOHMANN_DEFINE_TYPE_INTRUSIVE(Time, hour, min, sec)
+    friend std::fstream& operator >>(std::fstream& is, Time& t);
+    friend std::ostream& operator <<(std::ostream& os, const Time& t);
 };
 
 struct DateTime
@@ -46,10 +41,8 @@ struct DateTime
     {}
 
     DateTime(std::time_t t): DateTime(std::localtime(&t))
-    {
-    }
+    {}
 
-    friend std::ostream& operator << (std::ostream& os, const DateTime& dt);
-
-    NLOHMANN_DEFINE_TYPE_INTRUSIVE(DateTime, date, time)
+    friend std::fstream& operator >>(std::fstream& is, DateTime& dt);
+    friend std::ostream& operator <<(std::ostream& os, const DateTime& dt);
 };

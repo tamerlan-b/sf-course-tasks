@@ -6,11 +6,9 @@
 #include <ctime>
 #include <algorithm>
 #include "3rd-party/termcolor.hpp"    // выделение цветом текста в терминале
-#include "3rd-party/nlohmann/json.hpp"    // сериализация/десериализация json-формата
 #include "datetime.hpp"
 
 using namespace std;
-using json = nlohmann::json;
 
 enum Cmds{
     SIGN_IN=1,
@@ -25,67 +23,15 @@ enum ChatCmds{
     CHAT_EXIT = 4
 };
 
-void App::load_users()
-{
-    std::ifstream users_file(this->users_path);
-    if(users_file.peek() != std::ifstream::traits_type::eof())   // Если файл непустой
-    {
-        json j = json::parse(users_file);
-        users_file.close();
-        for (auto& [key, value] : j.items())
-        {
-            this->users.push_back(value);
-        }
-    }
-    else
-    {
-        users_file.close();
-    }
-}
-
-void App::save_user(const User& user) const
-{
-    json j(this->users);
-    std::ofstream f(this->users_path, std::ios_base::trunc);
-    f << j.dump(4);
-    f.close();
-}
-
-void App::load_messages()
-{
-    std::ifstream msgs_file(this->messages_path);
-    if(msgs_file.peek() != std::ifstream::traits_type::eof())   // Если файл непустой
-    {
-        json j = json::parse(msgs_file);
-        msgs_file.close();
-        for (auto& [key, value] : j.items())
-        {
-            this->messages.push_back(value);
-        }
-    }
-    else
-    {
-        msgs_file.close();
-    }
-}
-
-void App::save_message(const Message& msg) const
-{
-    json j(this->messages);
-    std::ofstream f(this->messages_path, std::ios_base::trunc);
-    f << j.dump(4);
-    f.close();
-}
-
 App::App(std::string users_path, std::string messages_path)
 : users_path(users_path), messages_path(messages_path)
 {
     
     // Считываем пользователей из файла
-    this->load_users();
+    this->load(this->users_path, this->users);
 
     // Считываем историю сообщений
-    this->load_messages();
+    this->load(this->messages_path, this->messages);
     
 }
 
@@ -119,7 +65,7 @@ int App::create_user()
     this->users.push_back(new_user);
 
     // Сохраняем пользователя в файл пользователей
-    this->save_user(new_user);
+    this->save(this->users_path, new_user);
 
     cout << login << ", вы успешно зарегистрированы в Цидульке!" << "\n";
     return this->users.size() - 1;
@@ -257,7 +203,7 @@ void App::write_msg(const int user_id)
     this->messages.push_back(msg);
 
     // Сохраняем сообщение в файл
-    this->save_message(msg);
+    this->save(this->messages_path, msg);
     cout << "Сообщение отправлено" << "\n";
 }
 

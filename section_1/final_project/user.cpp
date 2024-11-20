@@ -34,8 +34,16 @@ const std::string& User::get_login() const noexcept
     return this->login;
 }
 
-std::ostream& operator<<(std::ostream& os, const User& user)
+std::fstream& operator >>(std::fstream& is, User& user)
 {
-    os << user.login << " " << user.pass_hash;
+    is >> user.login;
+    is >> user.pass_hash;
+    return is;
+}
+std::ostream& operator <<(std::ostream& os, const User& user)
+{
+    os << user.login;
+    os << ' ';
+    os << user.pass_hash;
     return os;
 }

@@ -1,6 +1,6 @@
 #pragma once
+#include <fstream>
 #include <iostream>
-#include "3rd-party/nlohmann/json.hpp"
 
 class User
 {
@@ -16,7 +16,6 @@ class User
         bool check_password(std::string& password);
         bool operator==(const User& other) const noexcept;
         const std::string& get_login() const noexcept;
-        friend std::ostream& operator<<(std::ostream&, const User& user);
-
-        NLOHMANN_DEFINE_TYPE_INTRUSIVE(User, login, pass_hash)
+        friend std::fstream& operator >>(std::fstream& is, User& user);
+	    friend std::ostream& operator <<(std::ostream& os, const User& user);
 };
