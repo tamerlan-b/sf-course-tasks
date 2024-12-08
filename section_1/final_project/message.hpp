@@ -1,7 +1,6 @@
 #pragma once
 
 #include <string>
-#include "user.hpp"
 #include "datetime.hpp"
 #include <fstream>
 
@@ -11,7 +10,7 @@ class Message
         Message() = default;
         Message(std::string sender, std::string receiver, std::string text, DateTime datetime);
         virtual ~Message() = default;
-        bool is_empty() const noexcept;
+        [[nodiscard]] bool is_empty() const noexcept;
         std::string sender;
         std::string receiver;
         std::string text;

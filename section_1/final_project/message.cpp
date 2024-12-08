@@ -2,7 +2,7 @@
 
 
 Message::Message(std::string sender, std::string receiver, std::string text, DateTime datetime)
-: sender(sender), receiver(receiver), text(text), datetime(datetime)
+: sender(std::move(sender)), receiver(std::move(receiver)), text(std::move(text)), datetime(datetime)
 {}
 
 bool Message::is_empty() const noexcept
@@ -16,9 +16,15 @@ std::fstream& operator >>(std::fstream& is, Message& msg)
     is >> msg.receiver;
     // TODO: модифировать способ записи сообщения всем
     msg.receiver = msg.receiver == "-" ? "" : msg.receiver;
-    is >> msg.text;
-    msg.text = msg.text == "-" ? "" : msg.text;
     is >> msg.datetime;
+    
+    std::getline(is, msg.text);
+    if(msg.text.empty())
+    {
+        std::getline(is, msg.text);
+    }
+    msg.text = msg.text == "-" ? "" : msg.text;
+    return is;
     return is;
 }
 std::ostream& operator <<(std::ostream& os, const Message& msg)
@@ -27,8 +33,8 @@ std::ostream& operator <<(std::ostream& os, const Message& msg)
     os << ' ';
     os << (msg.receiver == "" ? "-" : msg.receiver);
     os << ' ';
-    os << (msg.text == "" ? "-" : msg.text);
-    os << ' ';
     os << msg.datetime;
+    os << '\n';
+    os << (msg.text == "" ? "-" : msg.text);
     return os;
 }

@@ -1,7 +1,7 @@
 #pragma once
 #include <vector>
 #include <string>
-#include "user.hpp"
+#include "hashtable.hpp"
 #include "message.hpp"
 #include <fstream>
 #include <filesystem>
@@ -13,17 +13,17 @@ class App
         App(std::string users_path, std::string messages_path);
         virtual ~App() = default;
         void run();
-        int create_user();
+        std::string create_user();
         bool is_login_available(std::string& login);
-        int authorize();
-        int sign_in();
-        void chat_menu(const int user_id);
-        void show_users(const bool add_all=false) const noexcept;
-        void write_msg(const int user_id);
-        void show_messages(int user_id) const noexcept;
+        std::string authorize();
+        std::string sign_in();
+        void chat_menu(const std::string& login);
+        void show_users(bool add_all=false) const noexcept;
+        void write_msg(const std::string& login);
+        void show_messages(const std::string& login) const noexcept;
     private:
         std::vector<Message> messages;
-        std::vector<User> users;
+        skillfactory::HashTable<std::string, std::string> users_table;
         std::string users_path;
         std::string messages_path;
 
@@ -68,4 +68,8 @@ class App
                 return;
             }
         }
+
+        void load_users(const std::string& fname);
+
+        static void save_user(const std::string& fname, const std::string& login, const std::string& pass_hash);
 };
