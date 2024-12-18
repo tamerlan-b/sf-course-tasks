@@ -4,7 +4,7 @@ DT_LIB = datetime
 APP_LIB = app
 final_project: main.cpp app_lib datetime_lib message_lib
 	g++ main.cpp -std=c++17 -o $(TARGET) -L. -l$(APP_LIB) -l$(MSG_LIB) -l$(DT_LIB)
-app_lib: $(APP_LIB).cpp $(APP_LIB).hpp hashtable.hpp message_lib datetime_lib
+app_lib: $(APP_LIB).cpp $(APP_LIB).hpp message_lib datetime_lib
 	g++ -o $(APP_LIB).o $(APP_LIB).cpp -c -L. -l$(MSG_LIB) -l$(DT_LIB)
 	ar rc lib$(APP_LIB).a $(APP_LIB).o
 message_lib: $(MSG_LIB).cpp $(MSG_LIB).hpp

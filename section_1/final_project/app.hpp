@@ -1,10 +1,10 @@
 #pragma once
 #include <vector>
 #include <string>
-#include "hashtable.hpp"
 #include "message.hpp"
 #include <fstream>
 #include <filesystem>
+#include <unordered_map>
 namespace fs = std::filesystem;
 
 class App
@@ -23,7 +23,7 @@ class App
         void show_messages(const std::string& login) const noexcept;
     private:
         std::vector<Message> messages;
-        skillfactory::HashTable<std::string, std::string> users_table;
+        std::unordered_map<std::string, std::string> users_table;
         std::string users_path;
         std::string messages_path;
 
@@ -33,7 +33,9 @@ class App
         {
             std::fstream file(fname, std::ios::out | std::ios::app);
             if (!file)
+            {
                 file = std::fstream(fname, std::ios::out | std::ios::app | std::ios::trunc);
+            }
             if (file) {
                 // Оставляем права чтения и записи только владельцу файла
                 fs::permissions(fname, fs::perms::owner_exec | fs::perms::group_all | fs::perms::others_all, fs::perm_options::remove);
@@ -58,7 +60,9 @@ class App
                     T obj;
                     file >> obj;
                     if(!obj.is_empty())
+                    {
                         objects.push_back(obj);
+                    }
                 }
                 file.close();
             }

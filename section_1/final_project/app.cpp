@@ -5,7 +5,6 @@
 #include <ctime>
 #include "3rd-party/termcolor.hpp"    // выделение цветом текста в терминале
 #include "datetime.hpp"
-#include <functional>
 #include "3rd-party/picosha2.h"         // хэширование SHA256
 
 using namespace std;
@@ -23,18 +22,8 @@ enum ChatCmds{
     CHAT_EXIT = 4
 };
 
-size_t hash_func(std::string fr_name)
-{
-    size_t sum = 0;
-    for(char symbol: fr_name)
-    {
-        sum += symbol;
-    }
-    return sum;
-}
-
 App::App(std::string users_path, std::string messages_path)
-: users_table(skillfactory::HashTable<std::string, std::string>(std::function<size_t(std::string)>(hash_func))), 
+: 
 users_path(std::move(users_path)),
 messages_path(std::move(messages_path))
 {
@@ -58,7 +47,7 @@ void App::load_users(const std::string& fname)
             file >> user_pass_hash;
             if(!user_login.empty() && !user_pass_hash.empty())
             {
-                this->users_table.add(std::move(user_login), std::move(user_pass_hash));
+                this->users_table.emplace(std::move(user_login), std::move(user_pass_hash));
             }
         }
         file.close();
@@ -92,7 +81,7 @@ void App::save_user(const std::string& fname, const std::string& login, const st
 
 bool App::is_login_available(std::string& login)
 {
-    return !(this->users_table.find(login).has_value());
+    return this->users_table.find(login) == this->users_table.end();
 }
 
 std::string App::create_user()
@@ -118,7 +107,7 @@ std::string App::create_user()
 
     // Добавляем пользователя в список
     std::string pass_hash = picosha2::hash256_hex_string(password);
-    this->users_table.add(login, pass_hash);
+    this->users_table.emplace(login, pass_hash);
 
     // Сохраняем пользователя в файл пользователей
     App::save_user(this->users_path, login, pass_hash);
@@ -137,7 +126,7 @@ std::string App::sign_in()
     cin >> password;
     
     std::string in_pass_hash = picosha2::hash256_hex_string(password);
-    if(auto pass_hash = this->users_table.find(login); pass_hash && pass_hash.value() == in_pass_hash)
+    if(this->users_table.find(login) != this->users_table.end() && this->users_table[login] == in_pass_hash)
     {
         cout << termcolor::green;
         cout << "Добро пожаловать, " << login << "\n";
@@ -202,12 +191,9 @@ void App::show_users(bool add_all) const noexcept
 {
     auto show = [](const char* msg){ cout << " - " << msg << "\n"; };
     // Выводим всех пользователей (нужно в дебаге)
-    for (size_t i = 0; i < this->users_table.size(); ++i)
+    for (const auto& [key, val] : this->users_table)
     {
-        if(this->users_table[i])
-        {
-            show(this->users_table[i].key.c_str());
-        }
+        show(key.c_str());
     }
     // TODO: вернуть возможность писать всем пользователям
     // if(add_all)
@@ -250,7 +236,7 @@ void App::write_msg(const std::string& login)
     std::string receiver_login;
     cin >> receiver_login;
 
-    if(!this->users_table.find(receiver_login))
+    if(this->users_table.find(receiver_login) == this->users_table.end())
     {
         cout << "Введено неправильное значение" << "\n";
         return;
