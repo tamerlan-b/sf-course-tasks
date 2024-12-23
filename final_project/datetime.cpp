@@ -1,14 +1,14 @@
 #include "datetime.hpp"
 // TODO: улучшить формат отображения даты и времени
 
-std::fstream& operator >>(std::fstream& is, Date& d)
+std::istream& operator>>(std::istream& is, Date& d)
 {
     is >> d.day;
     is >> d.month;
     is >> d.year;
     return is;
 }
-std::ostream& operator <<(std::ostream& os, const Date& d)
+std::ostream& operator<<(std::ostream& os, const Date& d)
 {
     os << d.day;
     os << ' ';
@@ -18,15 +18,14 @@ std::ostream& operator <<(std::ostream& os, const Date& d)
     return os;
 }
 
-
-std::fstream& operator >>(std::fstream& is, Time& t)
+std::istream& operator>>(std::istream& is, Time& t)
 {
     is >> t.hour;
     is >> t.min;
     is >> t.sec;
     return is;
 }
-std::ostream& operator <<(std::ostream& os, const Time& t)
+std::ostream& operator<<(std::ostream& os, const Time& t)
 {
     os << t.hour;
     os << ' ';
@@ -36,14 +35,13 @@ std::ostream& operator <<(std::ostream& os, const Time& t)
     return os;
 }
 
-
-std::fstream& operator >>(std::fstream& is, DateTime& dt)
+std::istream& operator>>(std::istream& is, DateTime& dt)
 {
     is >> dt.date;
     is >> dt.time;
     return is;
 }
-std::ostream& operator <<(std::ostream& os, const DateTime& dt)
+std::ostream& operator<<(std::ostream& os, const DateTime& dt)
 {
     os << dt.date;
     os << ' ';

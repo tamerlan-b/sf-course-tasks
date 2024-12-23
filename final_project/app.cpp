@@ -1,37 +1,37 @@
 #include "app.hpp"
-#include <iostream>
-#include <fstream>
-#include <limits>
-#include <ctime>
-#include "3rd-party/termcolor.hpp"    // выделение цветом текста в терминале
+#include "3rd-party/picosha2.h"    // хэширование SHA256
+#include "3rd-party/termcolor.hpp" // выделение цветом текста в терминале
 #include "datetime.hpp"
-#include "3rd-party/picosha2.h"         // хэширование SHA256
+#include <ctime>
+#include <fstream>
+#include <iostream>
+#include <limits>
 
 using namespace std;
 
-enum Cmds{
-    SIGN_IN=1,
-    SIGN_UP=2,
-    EXIT=3
+enum Cmds
+{
+    SIGN_IN = 1,
+    SIGN_UP = 2,
+    EXIT = 3
 };
 
-enum ChatCmds{
-    SHOW_CHAT = 1, 
-    SHOW_USERS = 2, 
-    WRITE_MSG = 3, 
+enum ChatCmds
+{
+    SHOW_CHAT = 1,
+    SHOW_USERS = 2,
+    WRITE_MSG = 3,
     CHAT_EXIT = 4
 };
 
 App::App(std::string users_path, std::string messages_path)
-: 
-users_path(std::move(users_path)),
-messages_path(std::move(messages_path))
+    : users_path(std::move(users_path)), messages_path(std::move(messages_path))
 {
     // Считываем пользователей из файла
     this->load_users(this->users_path);
 
     // Считываем историю сообщений
-    this->load(this->messages_path, this->messages);    
+    this->load(this->messages_path, this->messages);
 }
 
 void App::load_users(const std::string& fname)
@@ -41,11 +41,11 @@ void App::load_users(const std::string& fname)
     {
         std::string user_login;
         std::string user_pass_hash;
-        while(!file.eof())
+        while (!file.eof())
         {
             file >> user_login;
             file >> user_pass_hash;
-            if(!user_login.empty() && !user_pass_hash.empty())
+            if (!user_login.empty() && !user_pass_hash.empty())
             {
                 this->users_table.emplace(std::move(user_login), std::move(user_pass_hash));
             }
@@ -66,9 +66,11 @@ void App::save_user(const std::string& fname, const std::string& login, const st
     {
         file = std::fstream(fname, std::ios::out | std::ios::app | std::ios::trunc);
     }
-    if (file) {
+    if (file)
+    {
         // Оставляем права чтения и записи только владельцу файла
-        fs::permissions(fname, fs::perms::owner_exec | fs::perms::group_all | fs::perms::others_all, fs::perm_options::remove);
+        fs::permissions(fname, fs::perms::owner_exec | fs::perms::group_all | fs::perms::others_all,
+                        fs::perm_options::remove);
         file << login << ' ' << pass_hash << '\n';
         file.close();
     }
@@ -79,10 +81,7 @@ void App::save_user(const std::string& fname, const std::string& login, const st
     }
 }
 
-bool App::is_login_available(std::string& login)
-{
-    return this->users_table.find(login) == this->users_table.end();
-}
+bool App::is_login_available(std::string& login) { return this->users_table.find(login) == this->users_table.end(); }
 
 std::string App::create_user()
 {
@@ -93,13 +92,12 @@ std::string App::create_user()
     {
         cout << "Придумайте логин: ";
         cin >> login;
-        if(repeat = !is_login_available(login); repeat)
+        if (repeat = !is_login_available(login); repeat)
         {
             cout << "Логин занят. Попробуйте другой" << "\n";
         }
-    }
-    while(repeat);
-    
+    } while (repeat);
+
     // Считываем пароль
     std::string password;
     cout << "Придумайте пароль: ";
@@ -124,14 +122,14 @@ std::string App::sign_in()
     cin >> login;
     cout << "Введите пароль: ";
     cin >> password;
-    
+
     std::string in_pass_hash = picosha2::hash256_hex_string(password);
-    if(this->users_table.find(login) != this->users_table.end() && this->users_table[login] == in_pass_hash)
+    if (this->users_table.find(login) != this->users_table.end() && this->users_table[login] == in_pass_hash)
     {
         cout << termcolor::green;
         cout << "Добро пожаловать, " << login << "\n";
         cout << termcolor::reset;
-        return login;  // TODO: убрать заглушку
+        return login; // TODO: убрать заглушку
     }
     else
     {
@@ -146,7 +144,7 @@ std::string App::authorize()
 {
     std::string user_login;
     bool done{false};
-    while(!done)
+    while (!done)
     {
         cout << "Добро пожаловать в чат Цидулька" << "\n";
         cout << "\t" << Cmds::SIGN_IN << ". Войти" << "\n";
@@ -155,7 +153,7 @@ std::string App::authorize()
         int choice;
         cin >> choice;
 
-        if(cin.fail())
+        if (cin.fail())
         {
             cin.clear();
             cin.ignore(numeric_limits<streamsize>::max(), '\n');
@@ -189,7 +187,7 @@ std::string App::authorize()
 
 void App::show_users(bool add_all) const noexcept
 {
-    auto show = [](const char* msg){ cout << " - " << msg << "\n"; };
+    auto show = [](const char* msg) { cout << " - " << msg << "\n"; };
     // Выводим всех пользователей (нужно в дебаге)
     for (const auto& [key, val] : this->users_table)
     {
@@ -208,7 +206,7 @@ void show_message(const Message& msg, const std::string& user_name) noexcept
     msg.sender == user_name ? cout << termcolor::magenta : cout << termcolor::cyan;
     cout << msg.sender << ": " << termcolor::reset;
     cout << msg.text;
-    if(msg.receiver != "")
+    if (msg.receiver != "")
     {
         cout << termcolor::yellow << " (to: " << msg.receiver << ")" << termcolor::reset;
     }
@@ -217,10 +215,10 @@ void show_message(const Message& msg, const std::string& user_name) noexcept
 
 void App::show_messages(const std::string& login) const noexcept
 {
-    for(const auto& msg: this->messages)
+    for (const auto& msg : this->messages)
     {
         // Показываем сообщения отправленные/адресованные текущему юзеру или адресованные всем
-        if(msg.sender == login || msg.receiver == login || msg.receiver == "")
+        if (msg.sender == login || msg.receiver == login || msg.receiver == "")
         {
             show_message(msg, login);
         }
@@ -236,7 +234,7 @@ void App::write_msg(const std::string& login)
     std::string receiver_login;
     cin >> receiver_login;
 
-    if(this->users_table.find(receiver_login) == this->users_table.end())
+    if (this->users_table.find(receiver_login) == this->users_table.end())
     {
         cout << "Введено неправильное значение" << "\n";
         return;
@@ -258,7 +256,7 @@ void App::write_msg(const std::string& login)
 void App::chat_menu(const std::string& login)
 {
     bool done{false};
-    while(!done)
+    while (!done)
     {
         cout << ChatCmds::SHOW_CHAT << ". Посмотреть чат" << "\n";
         cout << ChatCmds::SHOW_USERS << ". Посмотреть список пользователей" << "\n";
@@ -267,7 +265,7 @@ void App::chat_menu(const std::string& login)
         int choice;
         cin >> choice;
 
-        if(cin.fail())
+        if (cin.fail())
         {
             cin.clear();
             cin.ignore(numeric_limits<streamsize>::max(), '\n');
@@ -312,10 +310,9 @@ void App::run()
 {
     // Страница авторизации
     std::string user_login = this->authorize();
-    if(!user_login.empty())
+    if (!user_login.empty())
     {
         // Страница чата
         this->chat_menu(user_login);
     }
-    
 }
