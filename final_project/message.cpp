@@ -22,7 +22,6 @@ std::istream& operator>>(std::istream& is, Message& msg)
     }
     msg.text = msg.text == "-" ? "" : msg.text;
     return is;
-    return is;
 }
 std::ostream& operator<<(std::ostream& os, const Message& msg)
 {
