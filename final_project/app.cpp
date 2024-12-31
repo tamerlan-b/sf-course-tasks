@@ -24,61 +24,10 @@ enum ChatCmds
     CHAT_EXIT = 4
 };
 
-App::App(std::string users_path, std::string messages_path)
-    : users_path(std::move(users_path)), messages_path(std::move(messages_path))
+App::App(IDataManager* data_manager) : data_manager(data_manager)
 {
-    // Считываем пользователей из файла
-    this->load_users(this->users_path);
-
-    // Считываем историю сообщений
-    this->load(this->messages_path, this->messages);
-}
-
-void App::load_users(const std::string& fname)
-{
-    std::fstream file(fname, std::ios::in);
-    if (file)
-    {
-        std::string user_login;
-        std::string user_pass_hash;
-        while (!file.eof())
-        {
-            file >> user_login;
-            file >> user_pass_hash;
-            if (!user_login.empty() && !user_pass_hash.empty())
-            {
-                this->users_table.emplace(std::move(user_login), std::move(user_pass_hash));
-            }
-        }
-        file.close();
-    }
-    else
-    {
-        // cout << "Could not open file " << fname << " !" << '\n';
-        return;
-    }
-}
-
-void App::save_user(const std::string& fname, const std::string& login, const std::string& pass_hash)
-{
-    std::fstream file(fname, std::ios::out | std::ios::app);
-    if (!file)
-    {
-        file = std::fstream(fname, std::ios::out | std::ios::app | std::ios::trunc);
-    }
-    if (file)
-    {
-        // Оставляем права чтения и записи только владельцу файла
-        fs::permissions(fname, fs::perms::owner_exec | fs::perms::group_all | fs::perms::others_all,
-                        fs::perm_options::remove);
-        file << login << ' ' << pass_hash << '\n';
-        file.close();
-    }
-    else
-    {
-        std::cout << "Could not open file " << fname << " !" << '\n';
-        return;
-    }
+    this->data_manager->load_users(this->users_table);
+    this->data_manager->load_msgs(this->messages);
 }
 
 bool App::is_login_available(std::string& login) { return this->users_table.find(login) == this->users_table.end(); }
@@ -108,7 +57,7 @@ std::string App::create_user()
     this->users_table.emplace(login, pass_hash);
 
     // Сохраняем пользователя в файл пользователей
-    App::save_user(this->users_path, login, pass_hash);
+    this->data_manager->save_user(login, pass_hash);
 
     cout << login << ", вы успешно зарегистрированы в Цидульке!" << "\n";
     return login;
@@ -248,7 +197,7 @@ void App::write_msg(const std::string& login)
     this->messages.push_back(msg);
 
     // Сохраняем сообщение в файл
-    this->save(this->messages_path, msg);
+    this->data_manager->save_msg(msg);
     cout << "Сообщение отправлено" << "\n";
 }
 

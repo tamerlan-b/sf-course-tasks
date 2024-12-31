@@ -7,7 +7,7 @@ client: chat_client.hpp chat_client.cpp tcp_library.hpp tcp_library.cpp datetime
 	g++ chat_client.cpp tcp_library.cpp -std=c++17 -o chat_client -L. -l$(MSG_LIB) -l$(DT_LIB)
 server: chat_server.hpp chat_server.cpp tcp_library.hpp tcp_library.cpp datetime_lib message_lib
 	g++ chat_server.cpp tcp_library.cpp -std=c++17 -o chat_server -L. -l$(MSG_LIB) -l$(DT_LIB)
-final_project: main.cpp app_lib datetime_lib message_lib
+final_project: main.cpp app_lib datetime_lib message_lib file_data_manager.hpp data_manager_interface.hpp
 	g++ main.cpp -std=c++17 -o $(TARGET) -L. -l$(APP_LIB) -l$(MSG_LIB) -l$(DT_LIB)
 app_lib: $(APP_LIB).cpp $(APP_LIB).hpp message_lib datetime_lib
 	g++ -o $(APP_LIB).o $(APP_LIB).cpp -c -L. -l$(MSG_LIB) -l$(DT_LIB)
