@@ -48,9 +48,8 @@ int main(int argc, char const* argv[])
     std::cout << "Чат запущен в ОС " << PLATFORM_NAME << std::endl;
     print_os_info();
 
-    IDataManager* data_manager = new FileDataManager("chat_data/users.txt", "chat_data/messages.txt");
+    auto data_manager = std::make_shared<FileDataManager>("chat_data/users.txt", "chat_data/messages.txt");
     App app(data_manager);
     app.run();
-    delete data_manager;
     return 0;
 }

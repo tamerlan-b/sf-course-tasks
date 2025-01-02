@@ -13,7 +13,7 @@ namespace fs = std::filesystem;
 class App
 {
   public:
-    App(IDataManager* data_manager);
+    App(std::shared_ptr<IDataManager> data_manager);
     virtual ~App() = default;
     void run();
     std::string create_user();
@@ -26,7 +26,7 @@ class App
     void show_messages(const std::string& login) const noexcept;
 
   private:
-    IDataManager* data_manager;
+    std::shared_ptr<IDataManager> data_manager;
     std::vector<Message> messages;
     std::unordered_map<std::string, std::string> users_table;
 };

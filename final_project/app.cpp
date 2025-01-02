@@ -6,6 +6,7 @@
 #include <fstream>
 #include <iostream>
 #include <limits>
+#include <utility>
 
 using namespace std;
 
@@ -24,7 +25,7 @@ enum ChatCmds
     CHAT_EXIT = 4
 };
 
-App::App(IDataManager* data_manager) : data_manager(data_manager)
+App::App(std::shared_ptr<IDataManager> data_manager) : data_manager(std::move(data_manager))
 {
     this->data_manager->load_users(this->users_table);
     this->data_manager->load_msgs(this->messages);
