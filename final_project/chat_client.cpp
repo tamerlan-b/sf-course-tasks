@@ -336,7 +336,7 @@ bool ChatClient::get_history()
         return false;
     }
     auto* resp_msg = reinterpret_cast<sf::NetMessage*>(response.data());
-    if (resp_msg->status == sf::MsgStatus::OK)
+    if (resp_msg->status != sf::MsgStatus::OK)
     {
         std::cout << "Статус от сервера не позволяет считать данные" << '\n';
         return false;
@@ -360,10 +360,48 @@ bool ChatClient::send_msg(const std::string& login)
 {
     // Узнаем у пользователя необходимые данные: кому отправить и что написать
     // TODO: вернуть поддержку сообщений с пробелом
+    cout << "Введите логин получателя:" << "\n";
+    std::string receiver_login;
+    cin >> receiver_login;
+
+    // TODO: проверять существование адресата
+
+    cout << "Введите сообщение: " << "\n";
+    std::string text;
+    cin.ignore();
+    std::getline(cin, text);
+
+    Message msg(login, receiver_login, text, DateTime(std::time(0)));
 
     // Формируем запрос и отправляем на сервер
+    sf::NetMessage req_msg;
+    req_msg.type = sf::MsgType::SEND_MSG;
+    req_msg.status = sf::MsgStatus::OK;
+    {
+        std::stringstream ss_msg;
+        ss_msg << msg;
+        strcpy(req_msg.data, ss_msg.str().data());
+    }
+    std::string request(reinterpret_cast<char*>(&req_msg));
+    if (!client.send_msg(request))
+    {
+        std::cout << "Сервер недоступен" << '\n';
+        return false;
+    }
 
     // Ждем ответ
+    std::string response;
+    if (!this->wait_for_response(response, sf::MsgType::SEND_MSG))
+    {
+        std::cout << "Проблемы с получением ответа от сервера" << '\n';
+        return false;
+    }
+    auto* resp_msg = reinterpret_cast<sf::NetMessage*>(response.data());
+    if (resp_msg->status == sf::MsgStatus::OK)
+    {
+        std::cout << "Статус от сервера не позволяет считать данные" << '\n';
+        return false;
+    }
     // Отображаем его
     return true;
 }

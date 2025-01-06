@@ -1,18 +1,17 @@
 #include "chat_server.hpp"
 #include "chat_msgs.hpp"
+#include "file_data_manager.hpp"
+#include "message.hpp"
 #include "tcp_library.hpp"
 #include <cstring>
-#include <filesystem>
 #include <iostream>
 #include <sstream>
 #include <string>
 #include <thread>
 using namespace std;
 namespace sf = skillfactory;
-namespace fs = std::filesystem;
 
-ChatServer::ChatServer(std::string users_path, std::string messages_path)
-    : users_path(std::move(users_path)), messages_path(std::move(messages_path))
+ChatServer::ChatServer(std::shared_ptr<IDataManager> data_manager) : data_manager(std::move(data_manager))
 {
     // Создадим сокет
     if (!server.create_socket())
@@ -35,63 +34,12 @@ ChatServer::ChatServer(std::string users_path, std::string messages_path)
         exit(1);
     }
 
-    // Считываем пользователей из файла
-    this->load_users(this->users_path);
-
-    // Считываем историю сообщений
-    this->load(this->messages_path, this->messages);
+    // Загружаем пользователей и сообщения
+    this->data_manager->load_users(this->users_table);
+    this->data_manager->load_msgs(this->messages);
 
     cout << "Сервер успешно запущен!" << '\n';
 }
-
-void ChatServer::load_users(const std::string& fname)
-{
-    std::fstream file(fname, std::ios::in);
-    if (file)
-    {
-        std::string user_login;
-        std::string user_pass_hash;
-        while (!file.eof())
-        {
-            file >> user_login;
-            file >> user_pass_hash;
-            if (!user_login.empty() && !user_pass_hash.empty())
-            {
-                this->users_table.emplace(std::move(user_login), std::move(user_pass_hash));
-            }
-        }
-        file.close();
-    }
-    else
-    {
-        // cout << "Could not open file " << fname << " !" << '\n';
-        return;
-    }
-}
-
-void ChatServer::save_user(const std::string& fname, const std::string& login, const std::string& pass_hash)
-{
-    std::fstream file(fname, std::ios::out | std::ios::app);
-    if (!file)
-    {
-        file = std::fstream(fname, std::ios::out | std::ios::app | std::ios::trunc);
-    }
-    if (file)
-    {
-        // Оставляем права чтения и записи только владельцу файла
-        fs::permissions(fname, fs::perms::owner_exec | fs::perms::group_all | fs::perms::others_all,
-                        fs::perm_options::remove);
-        file << login << ' ' << pass_hash << '\n';
-        file.close();
-    }
-    else
-    {
-        std::cout << "Could not open file " << fname << " !" << '\n';
-        return;
-    }
-}
-
-ChatServer::~ChatServer() {}
 
 bool ChatServer::sign_in_handle(int socket, const std::string& msg, std::string& client_login)
 {
@@ -204,7 +152,7 @@ bool ChatServer::sign_up_handle(int socket, const std::string& msg, std::string&
     // TODO: синхронизировать доступ из разных потоков
     // Сохраняем пользователя в файл пользователей
     this->users_table.emplace(login, pass_hash);
-    ChatServer::save_user(this->users_path, login, pass_hash);
+    this->data_manager->save_user(login, pass_hash);
     client_login = std::move(login);
 
     // Авторизуем пользователя (привязываем сокет к этому пользователю)
@@ -247,6 +195,7 @@ bool ChatServer::get_users_handle(int socket)
 
     return true;
 }
+
 bool ChatServer::get_history_handle(int socket, const std::string& client_login)
 {
     // Формируем сообщение
@@ -278,17 +227,52 @@ bool ChatServer::get_history_handle(int socket, const std::string& client_login)
 
     return true;
 }
+
 bool ChatServer::send_msg_handle(int socket, const std::string& msg)
 {
     // Распаковываем сообщение
-    // Проверяем, что пользователь с таким логином существует
+    const auto* net_msg = reinterpret_cast<const sf::NetMessage*>(msg.data());
+    Message message;
+    {
+        std::stringstream ss_msg;
+        ss_msg << net_msg->data;
+        ss_msg >> message;
+    }
+    // Если пользователя не существует, то отправляем ошибку
+    if (this->users_table.find(message.receiver) == this->users_table.end())
+    {
+        sf::NetMessage resp_msg;
+        resp_msg.type = sf::MsgType::SEND_MSG;
+        resp_msg.status = sf::MsgStatus::ERROR;
+        std::string response(reinterpret_cast<char*>(&resp_msg));
+
+        // Отправляем клиенту
+        if (!TcpServer::send_msg(socket, response))
+        {
+            std::cout << "Ошибка при отправке ответа" << '\n';
+        }
+        return false;
+    }
 
     // Отправляем статус ОК отправителю
+    sf::NetMessage resp_msg;
+    resp_msg.type = sf::MsgType::SEND_MSG;
+    resp_msg.status = sf::MsgStatus::OK;
+    std::string response(reinterpret_cast<char*>(&resp_msg));
+    if (!TcpServer::send_msg(socket, response))
+    {
+        std::cout << "Ошибка при отправке ответа" << '\n';
+    }
+
     // Отправляем сообщение получателю
+    // TODO: нужен сокет получателя
+    // Или при входе получателя отправлять ему сообщение
 
     // Сохраняем сообщение в файл
+    this->data_manager->save_msg(message);
 
     // Сохраняем сообщение в массив
+    this->messages.push_back(std::move(message));
 
     return true;
 }
@@ -415,7 +399,8 @@ void ChatServer::run()
 
 int main(int argc, const char** argv)
 {
-    ChatServer server("chat_data/users.txt", "chat_data/messages.txt");
+    auto data_manager = std::make_shared<FileDataManager>("chat_data/users.txt", "chat_data/messages.txt");
+    ChatServer server(data_manager);
     server.run();
     setlocale(LC_ALL, "");
     return 0;
