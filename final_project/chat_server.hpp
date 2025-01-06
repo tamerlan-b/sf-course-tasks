@@ -17,7 +17,7 @@ class ChatServer
 
     bool sign_up_handle(int socket, const std::string& msg, std::string& client_login);
     bool sign_in_handle(int socket, const std::string& msg, std::string& client_login);
-    bool user_list_handle(int socket);
+    bool get_users_handle(int socket);
     bool history_handle(int socket, const std::string& client_login);
     bool send_msg_handle(int socket, const std::string& msg);
     void client_handler(int socket);

@@ -264,8 +264,6 @@ void deserialize(const std::string& msg, std::vector<std::string>& users)
     {
         std::stringstream sstr;
         sstr << msg;
-        unsigned char cmd;
-        sstr >> cmd;
         while (!sstr.eof())
         {
             std::string login;
@@ -299,8 +297,10 @@ bool ChatClient::get_users()
 {
     // Формируем запрос и отправляем запрос на сервер
     {
-        std::string request;
-        request += static_cast<unsigned char>(sf::Commands::GET_USER_LIST);
+        sf::NetMessage req_msg;
+        req_msg.type = sf::MsgType::GET_USERS;
+        req_msg.status = sf::MsgStatus::OK;
+        std::string request(reinterpret_cast<char*>(&req_msg));
         if (!client.send_msg(request))
         {
             std::cout << "Сервер недоступен" << '\n';
@@ -310,17 +310,16 @@ bool ChatClient::get_users()
 
     // Ожидаем получения нужного ответа
     std::string response;
-    bool res = this->wait_for_response(response, sf::ResponseStatus::OK);
-    if (!res)
+    if (!this->wait_for_response(response, sf::MsgType::GET_USERS))
     {
         std::cout << "Статус от сервера не позволяет считать данные" << '\n';
         return false;
     }
 
     // Распаковываем ответ и сохраняем список пользователей
+    auto* resp_msg = reinterpret_cast<sf::NetMessage*>(response.data());
     std::vector<std::string> users;
-    deserialize(response, users);
-    this->server_msgs.pop_front();
+    deserialize(resp_msg->data, users);
 
     // Отображаем его
     std::cout << "Список пользователей:" << '\n';

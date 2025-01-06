@@ -1,6 +1,7 @@
 #include "chat_server.hpp"
 #include "chat_msgs.hpp"
 #include "tcp_library.hpp"
+#include <cstring>
 #include <filesystem>
 #include <iostream>
 #include <sstream>
@@ -221,16 +222,19 @@ bool ChatServer::sign_up_handle(int socket, const std::string& msg, std::string&
     return true;
 }
 
-bool ChatServer::user_list_handle(int socket)
+bool ChatServer::get_users_handle(int socket)
 {
     // Формируем сообщение
-    std::string response;
-    response += static_cast<unsigned char>(sf::ResponseStatus::OK);
-    response += '\n';
+    sf::NetMessage resp_msg;
+    resp_msg.type = sf::MsgType::GET_USERS;
+    resp_msg.status = sf::MsgStatus::OK;
+    std::string users_str;
     for (const auto& [login, pass] : this->users_table)
     {
-        response += login + '\n';
+        users_str += login + '\n';
     }
+    strcpy(resp_msg.data, users_str.data());
+    std::string response(reinterpret_cast<char*>(&resp_msg));
     std::cout << "Формируем список пользователе: " << '\n' << response;
 
     // Отправляем клиенту
@@ -308,19 +312,18 @@ void ChatServer::client_handler(int socket)
         }
         std::cout << "Data received from client (" << msg.size() << " bytes): " << msg << '\n';
 
-        auto cmd = sf::unpack_type(msg);
+        auto* net_msg = reinterpret_cast<sf::NetMessage*>(msg.data());
+        std::cout << "Get command: " << static_cast<int>(net_msg->type) << '\n';
 
-        std::cout << "Get command: " << static_cast<int>(cmd) << '\n';
-
-        switch (cmd)
+        switch (net_msg->type)
         {
-            case sf::Commands::SIGN_IN:
+            case sf::MsgType::SIGN_IN:
                 {
                     std::cout << "SIGN_IN" << '\n';
                     this->sign_in_handle(socket, msg, client_login);
                     break;
                 }
-            case sf::Commands::SIGN_UP:
+            case sf::MsgType::SIGN_UP:
                 {
                     std::cout << "SIGN_UP" << '\n';
                     this->sign_up_handle(socket, msg, client_login);
@@ -335,32 +338,27 @@ void ChatServer::client_handler(int socket)
             continue;
         }
 
-        switch (cmd)
+        switch (net_msg->type)
         {
-            case sf::Commands::SIGN_IN:
-            case sf::Commands::SIGN_UP:
+            case sf::MsgType::SIGN_IN:
+            case sf::MsgType::SIGN_UP:
                 break;
-            case sf::Commands::GET_HISTORY:
+            case sf::MsgType::GET_HISTORY:
                 {
                     std::cout << "GET_HISTORY" << '\n';
                     this->history_handle(socket, client_login);
                     break;
                 }
-            case sf::Commands::GET_USER_LIST:
+            case sf::MsgType::GET_USERS:
                 {
-                    std::cout << "GET_USER_LIST" << '\n';
-                    this->user_list_handle(socket);
+                    std::cout << "GET_USERS" << '\n';
+                    this->get_users_handle(socket);
                     break;
                 }
-            case sf::Commands::SEND_MSG:
+            case sf::MsgType::SEND_MSG:
                 {
                     std::cout << "SEND_MSG" << '\n';
                     this->send_msg_handle(socket, msg);
-                    break;
-                }
-            case sf::Commands::UNDEFINED:
-                {
-                    std::cout << "Undef option" << '\n';
                     break;
                 }
             default:
@@ -370,14 +368,6 @@ void ChatServer::client_handler(int socket)
                 }
         }
     }
-
-    // msg.clear();
-    // std::cout << "Enter the message you want to send to the client: " << '\n';
-    // std::cin >> msg;
-    // if (TcpServer::send_msg(socket, msg))
-    // {
-    //     std::cout << "Data (" << msg.size() << " bytes) send to the server successfully.!" << '\n';
-    // }
 }
 
 void ChatServer::accept_clients()
