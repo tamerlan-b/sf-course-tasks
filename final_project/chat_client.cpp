@@ -1,14 +1,18 @@
 #include "chat_client.hpp"
 #include "3rd-party/picosha2.h" // хэширование SHA256
 // #include "3rd-party/termcolor.hpp" // выделение цветом текста в терминале
+// #include "chat_msgs.hpp"
 #include "chat_msgs.hpp"
 #include "message.hpp"
-#include <sstream>
-#include <string>
-#include <vector>
-namespace sf = skillfactory;
+#include <chrono>
+#include <cstring>
 #include <iostream>
 #include <limits>
+#include <sstream>
+#include <string>
+#include <thread>
+#include <vector>
+namespace sf = skillfactory;
 using namespace std;
 
 inline sf::ResponseStatus unpack_response_type(const std::string& msg)
@@ -30,7 +34,6 @@ ChatClient::ChatClient()
         exit(1);
     }
 }
-ChatClient::~ChatClient() {}
 
 bool ChatClient::sign_up(std::string& login)
 {
@@ -39,15 +42,18 @@ bool ChatClient::sign_up(std::string& login)
     {
         login.clear();
     }
-    bool is_login_available{false};
     do
     {
         cout << "Придумайте логин: ";
         cin >> login;
 
         // Отправляем запрос с логином на сервер
-        std::string request = sf::pack<sf::Commands::SIGN_UP>(login);
-        if (!client.send_msg(request))
+        sf::NetMessage req_msg;
+        req_msg.type = sf::MsgType::SIGN_UP;
+        req_msg.status = sf::MsgStatus::OK;
+        strcpy(req_msg.data, login.data());
+        std::string req(reinterpret_cast<const char*>(&req_msg));
+        if (!client.send_msg(req))
         {
             std::cout << "Сервер недоступен" << '\n';
             continue;
@@ -55,19 +61,21 @@ bool ChatClient::sign_up(std::string& login)
 
         // Ждем ответ
         std::string response;
-        if (!client.read_msg(response))
+        if (!this->wait_for_response(response, sf::MsgType::SIGN_UP))
         {
             std::cout << "Проблемы с проверкой доступности логина" << '\n';
             continue;
         }
 
-        is_login_available = unpack_response_type(response) == sf::ResponseStatus::OK;
+        auto* resp_msg = reinterpret_cast<sf::NetMessage*>(response.data());
 
-        if (!is_login_available)
+        if (resp_msg->status == sf::MsgStatus::OK)
         {
-            cout << "Логин занят. Попробуйте другой" << "\n";
+            break;
         }
-    } while (!is_login_available);
+        cout << "Логин занят. Попробуйте другой" << "\n";
+
+    } while (true);
 
     // Считываем пароль
     std::string password;
@@ -76,9 +84,14 @@ bool ChatClient::sign_up(std::string& login)
 
     // Отправляем запрос с логином и хэшем пароля на сервер
     std::string pass_hash = picosha2::hash256_hex_string(password);
+
+    sf::NetMessage req_msg;
+    req_msg.type = sf::MsgType::SIGN_UP;
+    req_msg.status = sf::MsgStatus::OK;
+    strcpy(req_msg.data, (login + "\n" + pass_hash).data());
+    std::string req(reinterpret_cast<const char*>(&req_msg));
     // TODO: не отправлять повторно логин
-    std::string request = sf::pack<sf::Commands::SIGN_UP>(pass_hash);
-    if (!client.send_msg(request))
+    if (!client.send_msg(req))
     {
         std::cout << "Сервер недоступен" << '\n';
         return false;
@@ -86,13 +99,14 @@ bool ChatClient::sign_up(std::string& login)
 
     // Ждем ответ
     std::string response;
-    if (!client.read_msg(response))
+    if (!this->wait_for_response(response, sf::MsgType::SIGN_UP))
     {
         std::cout << "Проблемы с проверкой доступности логина" << '\n';
         return false;
     }
 
-    bool res = unpack_response_type(response) == sf::ResponseStatus::OK;
+    auto* resp_msg = reinterpret_cast<sf::NetMessage*>(response.data());
+    bool res = resp_msg->status == sf::MsgStatus::OK;
 
     cout << login << ", вы успешно зарегистрированы в Цидульке!" << "\n";
     return res;
@@ -124,12 +138,12 @@ bool ChatClient::sign_in(std::string& login)
     // Ждем ответ
     std::cout << "Ждем ответ от сервера" << '\n';
     std::string response;
-    if (!client.read_msg(response))
+    bool has_verified = this->wait_for_response(response, sf::ResponseStatus::OK);
+    if (!has_verified)
     {
         std::cout << "Проблемы с проверкой доступности логина" << '\n';
         return false;
     }
-    bool has_verified = unpack_response_type(response) == sf::ResponseStatus::OK;
 
     if (has_verified)
     {
@@ -189,6 +203,94 @@ std::string ChatClient::authorize()
     return user_login;
 }
 
+bool ChatClient::wait_for_response(std::string& response, sf::MsgType msg_type, const int timeout)
+{
+    const int sleep_time_ms{10};
+    int total_sleep_time_ms{0};
+    while (total_sleep_time_ms < timeout)
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(sleep_time_ms));
+        total_sleep_time_ms += sleep_time_ms;
+        // TODO: оценить правильность поиска
+        for (auto it = this->server_msgs.begin(); it != this->server_msgs.end(); ++it)
+        {
+            const auto* msg_net = reinterpret_cast<const sf::NetMessage*>(it->data());
+            // Если нашли нужное сообщение
+            if (msg_net->type == msg_type)
+            {
+                // Сохраняем найденное сообщение
+                response = *it;
+                // Удаляем его из буфера
+                this->server_msgs.erase(it);
+                // Выходим из метода
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
+bool ChatClient::wait_for_response(std::string& response, sf::ResponseStatus response_type, const int timeout)
+{
+    const int sleep_time_ms{10};
+    int total_sleep_time_ms{0};
+    while (total_sleep_time_ms < timeout)
+    {
+        std::this_thread::sleep_for(std::chrono::milliseconds(sleep_time_ms));
+        total_sleep_time_ms += sleep_time_ms;
+        // Проверяем наличие ответа
+        // TODO: пропускать сообщения с сообщениями пользователей
+        response = this->server_msgs.size() == 0 ? "" : this->server_msgs.front();
+        if (unpack_response_type(response) != response_type)
+        {
+            return false;
+        }
+        else
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+void deserialize(const std::string& msg, std::vector<std::string>& users)
+{
+    {
+        std::stringstream sstr;
+        sstr << msg;
+        unsigned char cmd;
+        sstr >> cmd;
+        while (!sstr.eof())
+        {
+            std::string login;
+            sstr >> login;
+            if (!login.empty())
+            {
+                users.push_back(std::move(login));
+            }
+        }
+    }
+}
+
+void deserialize(const std::string& msg, std::vector<Message>& messages)
+{
+    std::stringstream sstr;
+    sstr << msg;
+    unsigned char cmd;
+    sstr >> cmd;
+    while (!sstr.eof())
+    {
+        Message one_msg;
+        sstr >> one_msg;
+        if (!one_msg.is_empty())
+        {
+            messages.push_back(std::move(one_msg));
+        }
+    }
+}
+
 bool ChatClient::get_users()
 {
     // Формируем запрос и отправляем запрос на сервер
@@ -202,15 +304,10 @@ bool ChatClient::get_users()
         }
     }
 
-    // Ждем ответ
+    // Ожидаем получения нужного ответа
     std::string response;
-    if (!client.read_msg(response))
-    {
-        std::cout << "Проблемы с получением ответа от сервера" << '\n';
-        return false;
-    }
-
-    if (unpack_response_type(response) != sf::ResponseStatus::OK)
+    bool res = this->wait_for_response(response, sf::ResponseStatus::OK);
+    if (!res)
     {
         std::cout << "Статус от сервера не позволяет считать данные" << '\n';
         return false;
@@ -218,21 +315,8 @@ bool ChatClient::get_users()
 
     // Распаковываем ответ и сохраняем список пользователей
     std::vector<std::string> users;
-    {
-        std::stringstream sstr;
-        sstr << response;
-        unsigned char cmd;
-        sstr >> cmd;
-        while (!sstr.eof())
-        {
-            std::string login;
-            sstr >> login;
-            if (!login.empty())
-            {
-                users.push_back(std::move(login));
-            }
-        }
-    }
+    deserialize(response, users);
+    this->server_msgs.pop_front();
 
     // Отображаем его
     std::cout << "Список пользователей:" << '\n';
@@ -287,21 +371,7 @@ bool ChatClient::get_history()
     // TODO: сохранять в переменную класса
     // Распаковываем ответ и сохраняем список сообщений
     std::vector<Message> messages;
-    {
-        std::stringstream sstr;
-        sstr << response;
-        unsigned char cmd;
-        sstr >> cmd;
-        while (!sstr.eof())
-        {
-            Message one_msg;
-            sstr >> one_msg;
-            if (!one_msg.is_empty())
-            {
-                messages.push_back(std::move(one_msg));
-            }
-        }
-    }
+    deserialize(response, messages);
 
     // Отображаем его
     std::cout << "Чат:" << '\n';
@@ -379,8 +449,24 @@ void ChatClient::chat_menu(const std::string& login)
     }
 }
 
+void ChatClient::listen_server()
+{
+    while (true)
+    {
+        std::string response;
+        if (!client.read_msg(response))
+        {
+            std::cout << "Проблемы с получением ответа от сервера" << '\n';
+        }
+        this->server_msgs.emplace_front(std::move(response));
+        std::cout << "Получено сообщение от сервера" << "\n";
+    }
+}
+
 void ChatClient::run()
 {
+    // Запускаем параллельное прослушивание сообщений от сервера
+    std::thread listener_thread([&]() { this->listen_server(); });
     // Страница авторизации
     std::string user_login = this->authorize();
     if (!user_login.empty())
@@ -388,6 +474,7 @@ void ChatClient::run()
         // Страница чата
         this->chat_menu(user_login);
     }
+    listener_thread.detach();
 }
 
 int main(int argc, const char** argv)

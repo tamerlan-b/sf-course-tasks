@@ -139,13 +139,8 @@ bool ChatServer::sign_in_handle(int socket, const std::string& msg, std::string&
 bool ChatServer::sign_up_handle(int socket, const std::string& msg, std::string& client_login)
 {
     // Считываем логин
-    std::string login;
-    {
-        std::stringstream sstr(msg);
-        unsigned char cmd;
-        sstr >> cmd;
-        sstr >> login;
-    }
+    const auto* req_msg = reinterpret_cast<const sf::NetMessage*>(msg.data());
+    std::string login(req_msg->data);
 
     // Проверяем логин на занятость
     bool is_login_available = this->users_table.find(login) == this->users_table.end();
@@ -154,20 +149,24 @@ bool ChatServer::sign_up_handle(int socket, const std::string& msg, std::string&
     if (!is_login_available)
     {
         std::cout << "Логин занят" << '\n';
-        std::string response;
-        response += static_cast<unsigned char>(sf::ResponseStatus::ERROR);
+        sf::NetMessage resp_msg;
+        resp_msg.type = sf::MsgType::SIGN_UP;
+        resp_msg.status = sf::MsgStatus::ERROR;
+        std::string response(reinterpret_cast<const char*>(&resp_msg));
         if (!TcpServer::send_msg(socket, response))
         {
             std::cout << "Ошибка при отправке ответа" << '\n';
         }
         return false;
     }
-
-    // Если свободен, отправляем ОК
+    else
     {
+        // Если свободен, отправляем ОК
         std::cout << "Логин свободен, отправляем ответ" << '\n';
-        std::string response;
-        response += static_cast<unsigned char>(sf::ResponseStatus::OK);
+        sf::NetMessage resp_msg;
+        resp_msg.type = sf::MsgType::SIGN_UP;
+        resp_msg.status = sf::MsgStatus::OK;
+        std::string response(reinterpret_cast<const char*>(&resp_msg));
         if (!TcpServer::send_msg(socket, response))
         {
             std::cout << "Ошибка при отправке ответа" << '\n';
@@ -194,10 +193,9 @@ bool ChatServer::sign_up_handle(int socket, const std::string& msg, std::string&
         std::cout << "Пароль получен" << '\n';
 
         // TODO: проверять, что тип запроса такой же, а не другой
-
-        std::stringstream sstr(msg2);
-        unsigned char cmd;
-        sstr >> cmd;
+        const auto* req_msg2 = reinterpret_cast<const sf::NetMessage*>(msg2.data());
+        std::stringstream sstr(req_msg2->data);
+        sstr >> login;
         sstr >> pass_hash;
     }
 
@@ -207,12 +205,13 @@ bool ChatServer::sign_up_handle(int socket, const std::string& msg, std::string&
     ChatServer::save_user(this->users_path, login, pass_hash);
     client_login = std::move(login);
 
-    // TODO: возвращать бы еще логин созданного юзера
     // Авторизуем пользователя (привязываем сокет к этому пользователю)
     {
         std::cout << "Пользователь создан, отправляем ответ" << '\n';
-        std::string response;
-        response += static_cast<unsigned char>(sf::ResponseStatus::OK);
+        sf::NetMessage resp_msg;
+        resp_msg.type = sf::MsgType::SIGN_UP;
+        resp_msg.status = sf::MsgStatus::OK;
+        std::string response(reinterpret_cast<const char*>(&resp_msg));
         if (!TcpServer::send_msg(socket, response))
         {
             std::cout << "Ошибка при отправке ответа" << '\n';

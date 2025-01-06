@@ -41,7 +41,7 @@ namespace skillfactory
         GET_USER_LIST = 4, // массив логинов пользователей
                            // Отправка сообщения
         SEND_MSG = 5, // сообщение (логины отправителя и получателя + текст сообщения
-                      // + время отправки)
+        // + время отправки)
         UNDEFINED = 255};
 
     enum class [[deprecated("Replace with MsgStatus")]] ResponseStatus : unsigned char{OK = 1, ERROR = 2,
