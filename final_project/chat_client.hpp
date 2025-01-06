@@ -25,7 +25,6 @@ class ChatClient
      *
      */
     void listen_server();
-    bool wait_for_response(std::string& response, skillfactory::ResponseStatus response_type, const int timeout = 1000);
     bool wait_for_response(std::string& response, skillfactory::MsgType msg_type, const int timeout = 1000);
 
     enum Cmds

@@ -15,11 +15,6 @@
 namespace sf = skillfactory;
 using namespace std;
 
-inline sf::ResponseStatus unpack_response_type(const std::string& msg)
-{
-    return static_cast<sf::ResponseStatus>(msg[0]);
-}
-
 ChatClient::ChatClient()
 {
     if (!client.create_socket())
@@ -229,30 +224,6 @@ bool ChatClient::wait_for_response(std::string& response, sf::MsgType msg_type, 
                 // Выходим из метода
                 return true;
             }
-        }
-    }
-
-    return false;
-}
-
-bool ChatClient::wait_for_response(std::string& response, sf::ResponseStatus response_type, const int timeout)
-{
-    const int sleep_time_ms{10};
-    int total_sleep_time_ms{0};
-    while (total_sleep_time_ms < timeout)
-    {
-        std::this_thread::sleep_for(std::chrono::milliseconds(sleep_time_ms));
-        total_sleep_time_ms += sleep_time_ms;
-        // Проверяем наличие ответа
-        // TODO: пропускать сообщения с сообщениями пользователей
-        response = this->server_msgs.size() == 0 ? "" : this->server_msgs.front();
-        if (unpack_response_type(response) != response_type)
-        {
-            return false;
-        }
-        else
-        {
-            return true;
         }
     }
 
