@@ -13,6 +13,7 @@ class ChatServer
     TcpServer server;
     std::vector<Message> messages;
     std::unordered_map<std::string, std::string> users_table;
+    std::unordered_map<std::string, int> users_sockets;
     std::shared_ptr<IDataManager> data_manager;
 
     bool sign_up_handle(int socket, const std::string& msg, std::string& client_login);

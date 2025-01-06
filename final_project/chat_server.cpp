@@ -297,6 +297,7 @@ void ChatServer::client_handler(int socket)
         if (msg.empty())
         {
             std::cout << "Похоже, что клиент отключился..." << '\n';
+            this->users_sockets.erase(client_login);
             return;
         }
         std::cout << "Data received from client (" << msg.size() << " bytes): " << msg << '\n';
@@ -325,6 +326,14 @@ void ChatServer::client_handler(int socket)
         if (client_login.empty())
         {
             continue;
+        }
+        else
+        {
+            // Если у этого пользователя не было сокета
+            if (this->users_sockets.find(client_login) == this->users_sockets.end())
+            {
+                this->users_sockets.emplace(client_login, socket);
+            }
         }
 
         switch (net_msg->type)
