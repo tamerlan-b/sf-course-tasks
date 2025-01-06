@@ -247,11 +247,10 @@ bool ChatServer::get_users_handle(int socket)
 
     return true;
 }
-bool ChatServer::history_handle(int socket, const std::string& client_login)
+bool ChatServer::get_history_handle(int socket, const std::string& client_login)
 {
     // Формируем сообщение
     std::stringstream sstr;
-    sstr << static_cast<unsigned char>(sf::ResponseStatus::OK) << '\n';
 
     // Показываем сообщения отправленные/адресованные текущему юзеру или адресованные всем
     for (const auto& msg : this->messages)
@@ -263,8 +262,14 @@ bool ChatServer::history_handle(int socket, const std::string& client_login)
     }
     std::cout << "Формируем список сообщений: " << '\n' << sstr.str();
 
+    sf::NetMessage resp_msg;
+    resp_msg.type = sf::MsgType::GET_HISTORY;
+    resp_msg.status = sf::MsgStatus::OK;
+    strcpy(resp_msg.data, sstr.str().data());
+    std::string response(reinterpret_cast<char*>(&resp_msg));
+
     // Отправляем клиенту
-    if (!TcpServer::send_msg(socket, sstr.str()))
+    if (!TcpServer::send_msg(socket, response))
     {
         std::cout << "Ошибка при отправке ответа" << '\n';
     }
@@ -346,7 +351,7 @@ void ChatServer::client_handler(int socket)
             case sf::MsgType::GET_HISTORY:
                 {
                     std::cout << "GET_HISTORY" << '\n';
-                    this->history_handle(socket, client_login);
+                    this->get_history_handle(socket, client_login);
                     break;
                 }
             case sf::MsgType::GET_USERS:

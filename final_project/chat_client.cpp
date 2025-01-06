@@ -280,8 +280,6 @@ void deserialize(const std::string& msg, std::vector<Message>& messages)
 {
     std::stringstream sstr;
     sstr << msg;
-    unsigned char cmd;
-    sstr >> cmd;
     while (!sstr.eof())
     {
         Message one_msg;
@@ -348,8 +346,10 @@ bool ChatClient::get_history()
 {
     // Формируем запрос и отправляем запрос на сервер
     {
-        std::string request;
-        request += static_cast<unsigned char>(sf::Commands::GET_HISTORY);
+        sf::NetMessage req_msg;
+        req_msg.type = sf::MsgType::GET_HISTORY;
+        req_msg.status = sf::MsgStatus::OK;
+        std::string request(reinterpret_cast<char*>(&req_msg));
         if (!client.send_msg(request))
         {
             std::cout << "Сервер недоступен" << '\n';
@@ -359,13 +359,13 @@ bool ChatClient::get_history()
 
     // Ждем ответ
     std::string response;
-    if (!client.read_msg(response))
+    if (!this->wait_for_response(response, sf::MsgType::GET_HISTORY))
     {
         std::cout << "Проблемы с получением ответа от сервера" << '\n';
         return false;
     }
-
-    if (unpack_response_type(response) != sf::ResponseStatus::OK)
+    auto* resp_msg = reinterpret_cast<sf::NetMessage*>(response.data());
+    if (resp_msg->status == sf::MsgStatus::OK)
     {
         std::cout << "Статус от сервера не позволяет считать данные" << '\n';
         return false;
@@ -374,7 +374,7 @@ bool ChatClient::get_history()
     // TODO: сохранять в переменную класса
     // Распаковываем ответ и сохраняем список сообщений
     std::vector<Message> messages;
-    deserialize(response, messages);
+    deserialize(resp_msg->data, messages);
 
     // Отображаем его
     std::cout << "Чат:" << '\n';
