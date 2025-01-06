@@ -7,8 +7,30 @@
 
 namespace skillfactory
 {
-    enum class Commands : unsigned char
+
+    enum class MsgType : unsigned char
     {
+        SIGN_IN = 1,
+        SIGN_UP = 2,
+        GET_USERS = 3,
+        GET_HISTORY = 4,
+        SEND_MSG = 5
+    };
+
+    enum class MsgStatus : unsigned char
+    {
+        OK = 1,
+        ERROR = 2
+    };
+
+    struct NetMessage
+    {
+        MsgType type;
+        MsgStatus status;
+        char data[1024 - sizeof(type) - sizeof(status)];
+    };
+
+    enum class [[deprecated("Replace with MsgType")]] Commands : unsigned char{
         // Вход
         SIGN_IN = 1,       // нужны: логин + хэш пароля
                            // Регистрация
@@ -20,23 +42,18 @@ namespace skillfactory
                            // Отправка сообщения
         SEND_MSG = 5, // сообщение (логины отправителя и получателя + текст сообщения
                       // + время отправки)
-        UNDEFINED = 255
-    };
+        UNDEFINED = 255};
 
-    enum class ResponseStatus : unsigned char
-    {
-        OK = 1,
-        ERROR = 2,
-        SERVER_ERROR = 3
-    };
+    enum class [[deprecated("Replace with MsgStatus")]] ResponseStatus : unsigned char{OK = 1, ERROR = 2,
+                                                                                       SERVER_ERROR = 3};
 
-    struct Request
+    struct [[deprecated("Replace with NetMessage")]] Request
     {
         unsigned short command;
         std::string data;
     };
 
-    struct Response
+    struct [[deprecated("Replace with NetMessage")]] Response
     {
         unsigned short command;
         std::string data;
