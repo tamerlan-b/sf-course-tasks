@@ -96,12 +96,11 @@ bool ChatServer::sign_in_handle(int socket, const std::string& msg, std::string&
 {
     // Выделяем из сообщения логин и хэш пароля
     std::cout << "Выделяем из сообщения логин и хэш пароля" << '\n';
+    const auto* net_msg = reinterpret_cast<const sf::NetMessage*>(msg.data());
     std::string login;
     std::string pass_hash;
     {
-        std::stringstream sstr(msg);
-        unsigned char cmd;
-        sstr >> cmd;
+        std::stringstream sstr(net_msg->data);
         sstr >> login;
         sstr >> pass_hash;
     }
@@ -115,20 +114,22 @@ bool ChatServer::sign_in_handle(int socket, const std::string& msg, std::string&
         is_correct_user = is_correct_user && this->users_table[login] == pass_hash;
     }
     // Если все ок, то сохраняем логин и отправляем пользователю OK
-    std::string response;
+    sf::NetMessage resp_msg;
+    resp_msg.type = sf::MsgType::SIGN_IN;
     if (is_correct_user)
     {
         std::cout << "Пользователь авторизован, отправляем ответ" << '\n';
-        response += static_cast<unsigned char>(sf::ResponseStatus::OK);
+        resp_msg.status = sf::MsgStatus::OK;
     }
     else
     {
         std::cout << "Пользователь не найден" << '\n';
         // Иначе отправляем ошибку
-        response += static_cast<unsigned char>(sf::ResponseStatus::ERROR);
+        resp_msg.status = sf::MsgStatus::ERROR;
     }
 
     client_login = std::move(login);
+    std::string response(reinterpret_cast<char*>(&resp_msg));
     if (!TcpServer::send_msg(socket, response))
     {
         std::cout << "Ошибка при отправке ответа" << '\n';

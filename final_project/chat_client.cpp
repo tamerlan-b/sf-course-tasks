@@ -127,7 +127,11 @@ bool ChatClient::sign_in(std::string& login)
     std::string pass_hash = picosha2::hash256_hex_string(password);
 
     // Отправляем запрос на сервер
-    std::string request = sf::pack<sf::Commands::SIGN_IN>(login, pass_hash);
+    sf::NetMessage req_msg;
+    req_msg.type = sf::MsgType::SIGN_IN;
+    req_msg.status = sf::MsgStatus::OK;
+    strcpy(req_msg.data, (login + "\n" + pass_hash).data());
+    std::string request(reinterpret_cast<char*>(&req_msg));
     std::cout << "Отправляем запрос на сервер: " << request << '\n';
     if (!client.send_msg(request))
     {
@@ -138,13 +142,13 @@ bool ChatClient::sign_in(std::string& login)
     // Ждем ответ
     std::cout << "Ждем ответ от сервера" << '\n';
     std::string response;
-    bool has_verified = this->wait_for_response(response, sf::ResponseStatus::OK);
-    if (!has_verified)
+    if (!this->wait_for_response(response, sf::MsgType::SIGN_IN))
     {
         std::cout << "Проблемы с проверкой доступности логина" << '\n';
         return false;
     }
-
+    auto* resp_msg = reinterpret_cast<sf::NetMessage*>(response.data());
+    bool has_verified = resp_msg->status == sf::MsgStatus::OK;
     if (has_verified)
     {
         // cout << termcolor::green;
