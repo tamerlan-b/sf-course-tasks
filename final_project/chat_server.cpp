@@ -265,7 +265,19 @@ bool ChatServer::send_msg_handle(int socket, const std::string& msg)
     }
 
     // Отправляем сообщение получателю
-    // TODO: нужен сокет получателя
+    // TODO: если пользователь онлайн (есть его сокет), то отправляем сообщение ему
+    if (this->users_sockets.find(message.receiver) != this->users_sockets.end())
+    {
+        std::cout << "Отправляем сообщение пользователю " << message.receiver << "..." << '\n';
+        if (!TcpServer::send_msg(this->users_sockets[message.receiver], msg))
+        {
+            std::cout << "Ошибка при отправке ответа" << '\n';
+        }
+        std::cout << "Отправлено vV" << '\n';
+
+        // std::cout << "Пересылаем сообщение пользователю " << message.receiver << '\n';
+    }
+    // Иначе отправляем их ему, когда он авторизуется
     // Или при входе получателя отправлять ему сообщение
 
     // Сохраняем сообщение в файл
@@ -296,14 +308,12 @@ void ChatServer::client_handler(int socket)
         }
         if (msg.empty())
         {
+            // TODO: предусмотреть возможность повторной авторизации
             std::cout << "Похоже, что клиент отключился..." << '\n';
             this->users_sockets.erase(client_login);
             return;
         }
-        std::cout << "Data received from client (" << msg.size() << " bytes): " << msg << '\n';
-
         auto* net_msg = reinterpret_cast<sf::NetMessage*>(msg.data());
-        std::cout << "Get command: " << static_cast<int>(net_msg->type) << '\n';
 
         switch (net_msg->type)
         {

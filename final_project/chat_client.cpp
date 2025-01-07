@@ -397,7 +397,7 @@ bool ChatClient::send_msg(const std::string& login)
         return false;
     }
     auto* resp_msg = reinterpret_cast<sf::NetMessage*>(response.data());
-    if (resp_msg->status == sf::MsgStatus::OK)
+    if (resp_msg->status != sf::MsgStatus::OK)
     {
         std::cout << "Статус от сервера не позволяет считать данные" << '\n';
         return false;
@@ -406,15 +406,27 @@ bool ChatClient::send_msg(const std::string& login)
     return true;
 }
 
+void ChatClient::render_chat_menu()
+{
+    if (this->server_msgs.empty())
+    {
+        cout << ChatCmds::SHOW_CHAT << ". Посмотреть чат" << "\n";
+    }
+    else
+    {
+        cout << ChatCmds::SHOW_CHAT << ". Посмотреть чат (+" << this->server_msgs.size() << ")" << "\n";
+    }
+    cout << ChatCmds::SHOW_USERS << ". Посмотреть список пользователей" << "\n";
+    cout << ChatCmds::WRITE_MSG << ". Написать сообщение" << "\n";
+    cout << ChatCmds::CHAT_EXIT << ". Выход" << "\n";
+}
+
 void ChatClient::chat_menu(const std::string& login)
 {
     bool done{false};
     while (!done)
     {
-        cout << ChatCmds::SHOW_CHAT << ". Посмотреть чат" << "\n";
-        cout << ChatCmds::SHOW_USERS << ". Посмотреть список пользователей" << "\n";
-        cout << ChatCmds::WRITE_MSG << ". Написать сообщение" << "\n";
-        cout << ChatCmds::CHAT_EXIT << ". Выход" << "\n";
+        this->render_chat_menu();
         int choice;
         cin >> choice;
 
@@ -435,6 +447,7 @@ void ChatClient::chat_menu(const std::string& login)
                 cout << line_separator << '\n';
                 cout << "Чат сообщений" << "\n";
                 this->get_history();
+                // TODO: очищаем буфер сообщений
                 cout << line_separator << '\n';
                 done = false;
                 break;
@@ -470,8 +483,12 @@ void ChatClient::listen_server()
         {
             std::cout << "Проблемы с получением ответа от сервера" << '\n';
         }
-        this->server_msgs.emplace_front(std::move(response));
         std::cout << "Получено сообщение от сервера" << "\n";
+        this->server_msgs.emplace_front(std::move(response));
+        if (reinterpret_cast<sf::NetMessage*>(this->server_msgs.front().data())->type == sf::MsgType::SEND_MSG)
+        {
+            this->render_chat_menu();
+        }
     }
 }
 
