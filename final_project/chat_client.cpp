@@ -127,7 +127,6 @@ bool ChatClient::sign_in(std::string& login)
     req_msg.status = sf::MsgStatus::OK;
     strcpy(req_msg.data, (login + "\n" + pass_hash).data());
     std::string request(reinterpret_cast<char*>(&req_msg));
-    std::cout << "Отправляем запрос на сервер: " << request << '\n';
     if (!client.send_msg(request))
     {
         std::cout << "Сервер недоступен" << '\n';
@@ -135,7 +134,6 @@ bool ChatClient::sign_in(std::string& login)
     }
 
     // Ждем ответ
-    std::cout << "Ждем ответ от сервера" << '\n';
     std::string response;
     if (!this->wait_for_response(response, sf::MsgType::SIGN_IN))
     {
@@ -291,7 +289,7 @@ bool ChatClient::get_users()
     deserialize(resp_msg->data, users);
 
     // Отображаем его
-    std::cout << "Список пользователей:" << '\n';
+    // std::cout << "Список пользователей:" << '\n';
     for (const auto& user : users)
     {
         std::cout << " - " << user << '\n';
@@ -348,7 +346,7 @@ bool ChatClient::get_history()
     deserialize(resp_msg->data, messages);
 
     // Отображаем его
-    std::cout << "Чат:" << '\n';
+    // std::cout << "Чат:" << '\n';
     for (const auto& one_msg : messages)
     {
         show_message(one_msg);
@@ -497,7 +495,7 @@ void ChatClient::listen_server()
         {
             std::cout << "Проблемы с получением ответа от сервера" << '\n';
         }
-        std::cout << "Получено сообщение от сервера" << "\n";
+        // std::cout << "Получено сообщение от сервера" << "\n";
         this->server_msgs.emplace_front(std::move(response));
         if (reinterpret_cast<sf::NetMessage*>(this->server_msgs.front().data())->type == sf::MsgType::SEND_MSG)
         {
