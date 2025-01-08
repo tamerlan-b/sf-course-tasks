@@ -421,6 +421,22 @@ void ChatClient::render_chat_menu()
     cout << ChatCmds::CHAT_EXIT << ". Выход" << "\n";
 }
 
+void ChatClient::remove_new_messages()
+{
+    for (auto it = this->server_msgs.begin(); it != this->server_msgs.end();)
+    {
+        const auto* net_msg = reinterpret_cast<const sf::NetMessage*>(it->data());
+        if (net_msg->type == sf::MsgType::SEND_MSG)
+        {
+            it = this->server_msgs.erase(it);
+        }
+        else
+        {
+            ++it;
+        }
+    }
+}
+
 void ChatClient::chat_menu(const std::string& login)
 {
     bool done{false};
@@ -438,8 +454,6 @@ void ChatClient::chat_menu(const std::string& login)
             continue;
         }
 
-        // TODO: в параллельном потоке слушать сервер на предмет получения новых сообщений
-
         std::string line_separator(10, '-');
         switch (choice)
         {
@@ -447,7 +461,7 @@ void ChatClient::chat_menu(const std::string& login)
                 cout << line_separator << '\n';
                 cout << "Чат сообщений" << "\n";
                 this->get_history();
-                // TODO: очищаем буфер сообщений
+                this->remove_new_messages();
                 cout << line_separator << '\n';
                 done = false;
                 break;

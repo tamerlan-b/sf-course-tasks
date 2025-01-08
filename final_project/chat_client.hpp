@@ -19,6 +19,7 @@ class ChatClient
     bool sign_in(std::string& login);
     bool sign_up(std::string& login);
     std::string authorize();
+    void remove_new_messages();
     void render_chat_menu();
     void chat_menu(const std::string& login);
     /**

@@ -265,7 +265,7 @@ bool ChatServer::send_msg_handle(int socket, const std::string& msg)
     }
 
     // Отправляем сообщение получателю
-    // TODO: если пользователь онлайн (есть его сокет), то отправляем сообщение ему
+    // Если пользователь онлайн (есть его сокет), то отправляем сообщение ему
     if (this->users_sockets.find(message.receiver) != this->users_sockets.end())
     {
         std::cout << "Отправляем сообщение пользователю " << message.receiver << "..." << '\n';
@@ -277,8 +277,7 @@ bool ChatServer::send_msg_handle(int socket, const std::string& msg)
 
         // std::cout << "Пересылаем сообщение пользователю " << message.receiver << '\n';
     }
-    // Иначе отправляем их ему, когда он авторизуется
-    // Или при входе получателя отправлять ему сообщение
+    // TODO: реализовать отправку сообщений пользователю, когда он не онлайн
 
     // Сохраняем сообщение в файл
     this->data_manager->save_msg(message);
