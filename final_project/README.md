@@ -26,6 +26,8 @@
 - [ChatServer](chat_server.hpp) - приложение сервера чата
 - [IDataManager](data_manager_interface.hpp) - абстрактный базовый класс для управления сохраняемыми данными
 - [FileDataManager](file_data_manager.hpp) - реализация класса `IDataManager` для хранения данных в файлах
+- [ILogger](logger_interface.hpp.hpp) - абстрактный базовый класс для логирования
+- [Logger](logger.hpp) - реализация класса `ILogger` для логирования в файл
 - [skillfactory::MsgType](chat_msgs.hpp), [skillfactory::MsgStatus](chat_msgs.hpp), [skillfactory::NetMessage](chat_msgs.hpp) - структуры для коммуникации клиента и сервера
 - [TcpServer](tcp_library.hpp), [TcpClient](tcp_library.hpp) - классы базовых TCP сервера и клиента
 - [Message](message.hpp) - класс, хранящий информацию об отдельном сообщении
@@ -51,6 +53,8 @@ make clean
 ```bash
 ./chat_server
 ```
+
+Для остановки сервера в терминале нужно ввести 'q' и нажать Enter
 
 Запуск клиента:  
 ```bash

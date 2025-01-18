@@ -1,10 +1,13 @@
 #include "chat_server.hpp"
 #include "chat_msgs.hpp"
 #include "file_data_manager.hpp"
+#include "logger.hpp"
+#include "logger_interface.hpp"
 #include "message.hpp"
 #include "tcp_library.hpp"
 #include <cstring>
 #include <iostream>
+#include <memory>
 #include <sstream>
 #include <string>
 #include <thread>
@@ -31,7 +34,8 @@ namespace sf = skillfactory;
 #include <sys/utsname.h> // Для uname()
 #endif
 
-ChatServer::ChatServer(std::shared_ptr<IDataManager> data_manager) : data_manager(std::move(data_manager))
+ChatServer::ChatServer(std::unique_ptr<skillfactory::ILogger>& logger, std::unique_ptr<IDataManager>& data_manager)
+    : data_manager(std::move(data_manager)), logger(std::move(logger))
 {
     // Создадим сокет
     if (!server.create_socket())
@@ -223,6 +227,8 @@ bool ChatServer::get_history_handle(int socket, const std::string& client_login)
         }
     }
 
+    // TODO: разбивать сообщения на куски при превышении размера
+
     sf::NetMessage resp_msg;
     resp_msg.type = sf::MsgType::GET_HISTORY;
     resp_msg.status = sf::MsgStatus::OK;
@@ -293,6 +299,12 @@ bool ChatServer::send_msg_handle(int socket, const std::string& msg)
 
     // Сохраняем сообщение в файл
     this->data_manager->save_msg(message);
+
+    {
+        std::stringstream ss;
+        ss << message;
+        this->logger->write(ss.str());
+    }
 
     // Сохраняем сообщение в массив
     this->messages.push_back(std::move(message));
@@ -403,7 +415,29 @@ void ChatServer::accept_clients()
     }
 }
 
-void ChatServer::run() { this->accept_clients(); }
+void ChatServer::wait_for_stop()
+{
+    std::cout << "Нажмите \'q\' для остановки сервера" << '\n';
+    std::string exit_msg;
+    while (true)
+    {
+        std::cin >> exit_msg;
+        if (exit_msg == "q")
+        {
+            std::cout << "Сервер отключается" << std::endl;
+            break;
+        }
+    }
+}
+
+void ChatServer::run()
+{
+    // В отдельном потоке принимаем сокеты
+    std::thread server_thread([&]() { this->accept_clients(); });
+    server_thread.detach();
+    // В основном потоке ждем команду для завершения программы
+    this->wait_for_stop();
+}
 
 void print_os_info()
 {
@@ -428,9 +462,10 @@ int main(int argc, const char** argv)
     std::cout << "Чат запущен в ОС " << PLATFORM_NAME << std::endl;
     print_os_info();
 
-    auto data_manager = std::make_shared<FileDataManager>("chat_data/users.txt", "chat_data/messages.txt");
-    ChatServer server(data_manager);
+    std::unique_ptr<IDataManager> data_manager =
+        std::make_unique<FileDataManager>("chat_data/users.txt", "chat_data/messages.txt");
+    std::unique_ptr<sf::ILogger> logger = std::make_unique<skillfactory::Logger>();
+    ChatServer server(logger, data_manager);
     server.run();
-    setlocale(LC_ALL, "");
     return 0;
 }
