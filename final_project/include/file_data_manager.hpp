@@ -21,6 +21,20 @@ class FileDataManager : public IDataManager
     FileDataManager(std::string users_path, std::string msgs_path)
         : users_path(std::move(users_path)), msgs_path(std::move(msgs_path))
     {
+        auto create_folder_if_not_exist = [](const std::string& path)
+        {
+            auto path_fs = fs::path(path);
+            if (!fs::exists(path_fs))
+            {
+                if (path_fs.has_parent_path())
+                {
+                    fs::create_directory(path_fs.parent_path());
+                }
+            }
+        };
+
+        create_folder_if_not_exist(this->users_path);
+        create_folder_if_not_exist(this->msgs_path);
     }
 
     void save_user(const std::string& login, const std::string& pass_hash) override
