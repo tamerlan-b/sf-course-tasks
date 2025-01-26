@@ -47,22 +47,19 @@ CREATE TABLE IF NOT EXISTS users (
 ```sql
 CREATE TABLE IF NOT EXISTS passwords ( 
     id          SERIAL PRIMARY KEY, 
-    user_id     INT NOT NULL, --- сделать внешним ключом
-    pass_hash   VARCHAR(255) NOT NULL,
-    FOREIGN KEY (user_id) REFERENCES users (id)
+    user_id     INT NOT NULL REFERENCES users (id),
+    pass_hash   VARCHAR(255) NOT NULL
 );
 ```
 
 ```sql
 CREATE TABLE IF NOT EXISTS messages ( 
     id          SERIAL PRIMARY KEY, 
-    sender_id   INT NOT NULL, --- сделать внешним ключом
-    reciever_id INT NOT NULL, --- сделать внешним ключом
+    sender_id   INT NOT NULL REFERENCES users (id),
+    reciever_id INT NOT NULL REFERENCES users (id),
     content     TEXT NOT NULL, 
     created_at  TIMESTAMP DEFAULT CURRENT_TIMESTAMP, 
-    condition   TINYINT UNSIGNED NOT NULL,   --- статус сообщения
-    FOREIGN KEY (sender_id) REFERENCES users (id)
-    FOREIGN KEY (reciever_id) REFERENCES users (id)
+    condition   SMALLINT DEFAULT 0   --- статус сообщения
 );
 ```
 
@@ -76,17 +73,17 @@ CREATE TABLE IF NOT EXISTS messages (
 3. Наполнение таблиц тестовыми данными
 
 ```sql
-INSERT users 
+INSERT INTO users 
        (name, surname, email) 
-VALUES ('Ivan', 'Ivanov', ivan.ivanov@mail.ru), 
-        ('Artem', 'Artemov', artem.artemov@gmail.com), 
-        ('Anna', 'Artemova', artem.artemov@gmail.com), 
-        ('Fedor', 'Fedorov', fedor.fedorov@ya.ru), 
-        ('Lika', 'Likova', lika.likova@rambler.ru);
+VALUES ('Ivan', 'Ivanov', 'ivan.ivanov@mail.ru'), 
+        ('Artem', 'Artemov', 'artem.artemov@gmail.com'), 
+        ('Anna', 'Artemova', 'artem.artemov@gmail.com'), 
+        ('Fedor', 'Fedorov', 'fedor.fedorov@ya.ru'), 
+        ('Lika', 'Likova', 'lika.likova@rambler.ru');
 ```
 
 ```sql
-INSERT passwords 
+INSERT INTO passwords 
        (user_id, pass_hash) 
 VALUES ((SELECT id FROM users WHERE name = 'Ivan' AND surname = 'Ivanov'), 'oainc9a8y38gr42yfoaijcdpoaode4'), 
         ((SELECT id FROM users WHERE name = 'Artem' AND surname = 'Artemov'), 'poivn09203e1isd2wo1dp2w1wofmo7'), 
@@ -96,7 +93,7 @@ VALUES ((SELECT id FROM users WHERE name = 'Ivan' AND surname = 'Ivanov'), 'oain
 ```
 
 ```sql
-INSERT messages 
+INSERT INTO messages 
        (sender_id, reciever_id, content, condition) 
 VALUES (
             (SELECT id FROM users WHERE name = 'Ivan' AND surname = 'Ivanov'), 
