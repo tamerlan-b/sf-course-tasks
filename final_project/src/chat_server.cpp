@@ -69,7 +69,7 @@ int ChatServer::find_user(const std::string& login) const noexcept
 {
     for (size_t i = 0; i < this->users.size(); ++i)
     {
-        if (users[i].name == login)
+        if (users[i].login == login)
         {
             return i;
         }
@@ -213,7 +213,7 @@ bool ChatServer::get_users_handle(int socket)
 
     for (const auto& user : this->users)
     {
-        users_str += user.name + '\n';
+        users_str += user.login + '\n';
     }
     strcpy(resp_msg.data, users_str.data());
     std::string response(reinterpret_cast<char*>(&resp_msg));
