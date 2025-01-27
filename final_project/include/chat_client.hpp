@@ -48,4 +48,10 @@ class ChatClient
     ChatClient();
     virtual ~ChatClient() = default;
     void run();
+
+    struct SimpleUser
+    {
+        int id;
+        std::string login;
+    };
 };

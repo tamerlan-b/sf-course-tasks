@@ -183,8 +183,9 @@ bool ChatServer::sign_up_handle(int socket, const std::string& msg, std::string&
 
     // TODO: синхронизировать доступ из разных потоков
     // Сохраняем пользователя в файл пользователей
-    this->users.emplace_back(login, pass_hash);
     User user(login, pass_hash);
+    user.id = this->users.size();
+    this->users.push_back(user);
     this->data_manager->save_user(user);
     client_login = std::move(login);
 
@@ -210,10 +211,11 @@ bool ChatServer::get_users_handle(int socket)
     resp_msg.type = sf::MsgType::GET_USERS;
     resp_msg.status = sf::MsgStatus::OK;
     std::string users_str;
+    users_str += std::to_string(this->users.size()) + '\n';
 
     for (const auto& user : this->users)
     {
-        users_str += user.login + '\n';
+        users_str += std::to_string(user.id) + ' ' + user.login + '\n';
     }
     strcpy(resp_msg.data, users_str.data());
     std::string response(reinterpret_cast<char*>(&resp_msg));

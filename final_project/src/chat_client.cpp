@@ -5,6 +5,7 @@
 #include "chat_msgs.hpp"
 #include "message.hpp"
 #include <chrono>
+#include <cstddef>
 #include <cstring>
 #include <iostream>
 #include <limits>
@@ -228,18 +229,25 @@ bool ChatClient::wait_for_response(std::string& response, sf::MsgType msg_type, 
     return false;
 }
 
-void deserialize(const std::string& msg, std::vector<std::string>& users)
+void deserialize(const std::string& msg, std::vector<ChatClient::SimpleUser>& users)
 {
     {
         std::stringstream sstr;
         sstr << msg;
+
+        // сначала считываем количество пользователей
+        size_t num_users;
+        sstr >> num_users;
+        users.reserve(num_users);
         while (!sstr.eof())
         {
+            int id;
             std::string login;
+            sstr >> id;
             sstr >> login;
             if (!login.empty())
             {
-                users.push_back(std::move(login));
+                users.push_back({id, std::move(login)});
             }
         }
     }
@@ -285,14 +293,14 @@ bool ChatClient::get_users()
 
     // Распаковываем ответ и сохраняем список пользователей
     auto* resp_msg = reinterpret_cast<sf::NetMessage*>(response.data());
-    std::vector<std::string> users;
+    std::vector<SimpleUser> users;
     deserialize(resp_msg->data, users);
 
     // Отображаем его
     // std::cout << "Список пользователей:" << '\n';
     for (const auto& user : users)
     {
-        std::cout << " - " << user << '\n';
+        std::cout << user.id << ": " << user.login << '\n';
     }
     return true;
 }
