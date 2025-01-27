@@ -3,6 +3,7 @@
 #include "logger_interface.hpp"
 #include "message.hpp"
 #include "tcp_library.hpp"
+#include "user.hpp"
 #include <memory>
 #include <string>
 #include <unordered_map>
@@ -13,7 +14,8 @@ class ChatServer
   private:
     TcpServer server;
     std::vector<Message> messages;
-    std::unordered_map<std::string, std::string> users_table;
+    std::vector<User> users;
+
     std::unordered_map<std::string, int> users_sockets;
     std::unique_ptr<IDataManager> data_manager;
     std::unique_ptr<skillfactory::ILogger> logger;
@@ -26,6 +28,7 @@ class ChatServer
     void client_handler(int socket);
     void accept_clients();
     void wait_for_stop();
+    int find_user(const std::string& login) const noexcept;
 
   public:
     ChatServer(std::unique_ptr<skillfactory::ILogger>& logger, std::unique_ptr<IDataManager>& data_manager);

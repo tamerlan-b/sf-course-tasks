@@ -5,6 +5,7 @@ project(sf_chat)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)   # для clang
 
 include_directories(
     include
@@ -18,6 +19,7 @@ add_library(LoggerLib include/logger_interface.hpp include/logger.hpp src/logger
 add_executable(chat_server 
     src/chat_server.cpp 
     src/message.cpp 
+    src/user.cpp
 )
 
 target_link_libraries(chat_server PUBLIC TcpLib DateTimeLib LoggerLib)

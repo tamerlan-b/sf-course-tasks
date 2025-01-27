@@ -59,10 +59,22 @@ ChatServer::ChatServer(std::unique_ptr<skillfactory::ILogger>& logger, std::uniq
     }
 
     // Загружаем пользователей и сообщения
-    this->data_manager->load_users(this->users_table);
+    this->data_manager->load_users(this->users);
     this->data_manager->load_msgs(this->messages);
 
     cout << "Сервер успешно запущен!" << '\n';
+}
+
+int ChatServer::find_user(const std::string& login) const noexcept
+{
+    for (size_t i = 0; i < this->users.size(); ++i)
+    {
+        if (users[i].name == login)
+        {
+            return i;
+        }
+    }
+    return -1;
 }
 
 bool ChatServer::sign_in_handle(int socket, const std::string& msg, std::string& client_login)
@@ -77,11 +89,12 @@ bool ChatServer::sign_in_handle(int socket, const std::string& msg, std::string&
         sstr >> pass_hash;
     }
     // Проверяем, что такой логин есть
-    bool is_correct_user = this->users_table.find(login) != this->users_table.end();
+    int user_id = this->find_user(login);
     // Проверяем, что хэш пароля совпадает
-    if (is_correct_user)
+    bool is_correct_user = false;
+    if (user_id >= 0)
     {
-        is_correct_user = is_correct_user && this->users_table[login] == pass_hash;
+        is_correct_user = this->users[user_id].pass_hash == pass_hash;
     }
     // Если все ок, то сохраняем логин и отправляем пользователю OK
     sf::NetMessage resp_msg;
@@ -114,7 +127,7 @@ bool ChatServer::sign_up_handle(int socket, const std::string& msg, std::string&
     std::string login(req_msg->data);
 
     // Проверяем логин на занятость
-    bool is_login_available = this->users_table.find(login) == this->users_table.end();
+    bool is_login_available = this->find_user(login) < 0;
 
     // Если занят, отправляем error
     if (!is_login_available)
@@ -165,12 +178,14 @@ bool ChatServer::sign_up_handle(int socket, const std::string& msg, std::string&
         std::stringstream sstr(req_msg2->data);
         sstr >> login;
         sstr >> pass_hash;
+        // TODO: добавить доп поля
     }
 
     // TODO: синхронизировать доступ из разных потоков
     // Сохраняем пользователя в файл пользователей
-    this->users_table.emplace(login, pass_hash);
-    this->data_manager->save_user(login, pass_hash);
+    this->users.emplace_back(login, pass_hash);
+    User user(login, pass_hash);
+    this->data_manager->save_user(user);
     client_login = std::move(login);
 
     // Авторизуем пользователя (привязываем сокет к этому пользователю)
@@ -195,9 +210,10 @@ bool ChatServer::get_users_handle(int socket)
     resp_msg.type = sf::MsgType::GET_USERS;
     resp_msg.status = sf::MsgStatus::OK;
     std::string users_str;
-    for (const auto& [login, pass] : this->users_table)
+
+    for (const auto& user : this->users)
     {
-        users_str += login + '\n';
+        users_str += user.name + '\n';
     }
     strcpy(resp_msg.data, users_str.data());
     std::string response(reinterpret_cast<char*>(&resp_msg));
@@ -257,7 +273,7 @@ bool ChatServer::send_msg_handle(int socket, const std::string& msg)
         ss_msg >> message;
     }
     // Если пользователя не существует, то отправляем ошибку
-    if (this->users_table.find(message.receiver) == this->users_table.end())
+    if (this->find_user(message.receiver) < 0)
     {
         std::cout << "Выбранного пользователя не существует (" << '\n';
         sf::NetMessage resp_msg;

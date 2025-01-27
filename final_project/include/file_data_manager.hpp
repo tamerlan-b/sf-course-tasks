@@ -2,11 +2,11 @@
 
 #include "data_manager_interface.hpp"
 #include "message.hpp"
+#include "user.hpp"
 #include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <string>
-#include <unordered_map>
 #include <utility>
 #include <vector>
 namespace fs = std::filesystem;
@@ -37,7 +37,7 @@ class FileDataManager : public IDataManager
         create_folder_if_not_exist(this->msgs_path);
     }
 
-    void save_user(const std::string& login, const std::string& pass_hash) override
+    void save_user(const User& user) override
     {
         std::fstream file(this->users_path, std::ios::out | std::ios::app);
         if (!file)
@@ -49,7 +49,7 @@ class FileDataManager : public IDataManager
             // Оставляем права чтения и записи только владельцу файла
             fs::permissions(this->users_path, fs::perms::owner_exec | fs::perms::group_all | fs::perms::others_all,
                             fs::perm_options::remove);
-            file << login << ' ' << pass_hash << '\n';
+            file << user << '\n';
             file.close();
         }
         else
@@ -59,27 +59,25 @@ class FileDataManager : public IDataManager
         }
     }
 
-    void load_users(std::unordered_map<std::string, std::string>& users) const override
+    void load_users(std::vector<User>& users) const override
     {
         std::fstream file(this->users_path, std::ios::in);
         if (file)
         {
-            std::string user_login;
-            std::string user_pass_hash;
             while (!file.eof())
             {
-                file >> user_login;
-                file >> user_pass_hash;
-                if (!user_login.empty() && !user_pass_hash.empty())
+                User user;
+                file >> user;
+                if (!user.is_empty())
                 {
-                    users.emplace(std::move(user_login), std::move(user_pass_hash));
+                    users.push_back(user);
                 }
             }
             file.close();
         }
         else
         {
-            // cout << "Could not open file " << fname << " !" << '\n';
+            // cout << "Could not open file " << this->users_path << " !" << '\n';
             return;
         }
     }
