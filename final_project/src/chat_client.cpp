@@ -8,6 +8,7 @@
 #include <cstddef>
 #include <cstring>
 #include <iostream>
+#include <iterator>
 #include <limits>
 #include <sstream>
 #include <string>
@@ -268,6 +269,24 @@ void deserialize(const std::string& msg, std::vector<Message>& messages)
     }
 }
 
+void print(const std::vector<ChatClient::SimpleUser>& users)
+{
+    for (const auto& user : users)
+    {
+        std::cout << user.id << ": " << user.login << '\n';
+    }
+}
+
+int ChatClient::get_user_by_id(int id) const
+{
+    auto it = std::find_if(this->users.begin(), this->users.end(), [id](const SimpleUser& u) { return u.id == id; });
+    if (it != this->users.end())
+    {
+        return std::distance(this->users.begin(), it);
+    }
+    return -1;
+}
+
 bool ChatClient::get_users()
 {
     // Формируем запрос и отправляем запрос на сервер
@@ -293,12 +312,14 @@ bool ChatClient::get_users()
 
     // Распаковываем ответ и сохраняем список пользователей
     auto* resp_msg = reinterpret_cast<sf::NetMessage*>(response.data());
-    std::vector<SimpleUser> users;
-    deserialize(resp_msg->data, users);
+
+    // Сохраняем пользователей в поле класса
+    this->users.clear();
+    deserialize(resp_msg->data, this->users);
 
     // Отображаем его
     // std::cout << "Список пользователей:" << '\n';
-    for (const auto& user : users)
+    for (const auto& user : this->users)
     {
         std::cout << user.id << ": " << user.login << '\n';
     }
@@ -365,19 +386,32 @@ bool ChatClient::get_history()
 bool ChatClient::send_msg(const std::string& login)
 {
     // Узнаем у пользователя необходимые данные: кому отправить и что написать
-    // TODO: вернуть поддержку сообщений с пробелом
-    cout << "Введите логин получателя:" << "\n";
-    std::string receiver_login;
-    cin >> receiver_login;
 
-    // TODO: проверять существование адресата
+    // TODO: при отсутствии загруженного списка пользователей неявно просить его у сервера
+    if (this->users.size() == 0)
+    {
+        std::cout << "Не загружен список пользователей - загрузите его отдельно" << '\n';
+        return false;
+    }
+    std::cout << "Введите id получателя:" << '\n';
+    print(this->users);
+    int user_id;
+    std::cin >> user_id;
+
+    // Проверяем существование адресата
+    int user_index = this->get_user_by_id(user_id);
+    if (user_index < 0)
+    {
+        std::cout << "Нет пользователя с таким id" << '\n';
+        return false;
+    }
 
     cout << "Введите сообщение: " << "\n";
     std::string text;
     cin.ignore();
     std::getline(cin, text);
 
-    Message msg(login, receiver_login, text, DateTime(std::time(0)));
+    Message msg(login, this->users[user_index].login, text, DateTime(std::time(0)));
 
     // Формируем запрос и отправляем на сервер
     sf::NetMessage req_msg;

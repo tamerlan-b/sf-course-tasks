@@ -3,15 +3,25 @@
 #include "tcp_library.hpp"
 #include <deque>
 #include <string>
+#include <vector>
 // namespace sf = skillfactory;
 
 class ChatClient
 {
+  public:
+    struct SimpleUser
+    {
+        int id;
+        std::string login;
+    };
+
   private:
     TcpClient client;
 
     // Очередь сообщений, полученных от сервера
     std::deque<std::string> server_msgs;
+
+    std::vector<SimpleUser> users;
 
     bool get_users();
     bool get_history();
@@ -22,6 +32,8 @@ class ChatClient
     void remove_new_messages();
     void render_chat_menu();
     void chat_menu(const std::string& login);
+
+    [[nodiscard]] int get_user_by_id(int id) const;
     /**
      * @brief Слушает сообщения от сервера в отдельном потоке
      *
@@ -48,10 +60,4 @@ class ChatClient
     ChatClient();
     virtual ~ChatClient() = default;
     void run();
-
-    struct SimpleUser
-    {
-        int id;
-        std::string login;
-    };
 };
