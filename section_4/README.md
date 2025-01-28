@@ -7,9 +7,7 @@
 | поле | тип | комментарий |
 | - | - | - |
 | id | int | первичный ключ |
-| name | varchar(255) | |
-| surname | varchar(255) | |
-| email | varchar(255) | |
+| login | varchar(255) | |
 
 ##### Passwords
 
@@ -38,9 +36,7 @@
 ```sql
 CREATE TABLE IF NOT EXISTS users ( 
     id          SERIAL PRIMARY KEY, 
-    name        VARCHAR(255) NOT NULL, 
-    surname     VARCHAR(255) NOT NULL, 
-    email       VARCHAR(255) NOT NULL
+    login       VARCHAR(255) NOT NULL
 );
 ```
 
@@ -73,43 +69,42 @@ CREATE TABLE IF NOT EXISTS messages (
 3. Наполнение таблиц тестовыми данными
 
 ```sql
-INSERT INTO users 
-       (name, surname, email) 
-VALUES ('Ivan', 'Ivanov', 'ivan.ivanov@mail.ru'), 
-        ('Artem', 'Artemov', 'artem.artemov@gmail.com'), 
-        ('Anna', 'Artemova', 'artem.artemov@gmail.com'), 
-        ('Fedor', 'Fedorov', 'fedor.fedorov@ya.ru'), 
-        ('Lika', 'Likova', 'lika.likova@rambler.ru');
+INSERT INTO users (login) 
+VALUES  ('Ivan'), 
+        ('Artem'), 
+        ('Anna'), 
+        ('Fedor'), 
+        ('Lika');
 ```
 
 ```sql
 INSERT INTO passwords 
        (user_id, pass_hash) 
-VALUES ((SELECT id FROM users WHERE name = 'Ivan' AND surname = 'Ivanov'), 'oainc9a8y38gr42yfoaijcdpoaode4'), 
-        ((SELECT id FROM users WHERE name = 'Artem' AND surname = 'Artemov'), 'poivn09203e1isd2wo1dp2w1wofmo7'), 
-        ((SELECT id FROM users WHERE name = 'Anna' AND surname = 'Artemova'), 'poivn09103e1isd2wo1dp2w1wofmo7'), 
-        ((SELECT id FROM users WHERE name = 'Fedor' AND surname = 'Fedorov'), '03efrjoeirfnowefdikjpsocdufmm3'), 
-        ((SELECT id FROM users WHERE name = 'Lika' AND surname = 'Likova'), '09837gyuhjvbkfndsl9823uyref657');
+VALUES ((SELECT id FROM users WHERE login = 'Ivan'), 'oainc9a8y38gr42yfoaijcdpoaode4'), 
+        ((SELECT id FROM users WHERE login = 'Artem'), 'poivn09203e1isd2wo1dp2w1wofmo7'), 
+        ((SELECT id FROM users WHERE login = 'Anna'), 'poivn09103e1isd2wo1dp2w1wofmo7'), 
+        ((SELECT id FROM users WHERE login = 'Fedor'), '03efrjoeirfnowefdikjpsocdufmm3'), 
+        ((SELECT id FROM users WHERE login = 'Lika'), '09837gyuhjvbkfndsl9823uyref657');
 ```
 
 ```sql
 INSERT INTO messages 
        (sender_id, reciever_id, content, condition) 
 VALUES (
-            (SELECT id FROM users WHERE name = 'Ivan' AND surname = 'Ivanov'), 
-            (SELECT id FROM users WHERE name = 'Artem' AND surname = 'Artemov'), 
+            (SELECT id FROM users WHERE login = 'Ivan'), 
+            (SELECT id FROM users WHERE login = 'Artem'), 
             'Hello, Artem!',
             0
         ), 
         (
-            (SELECT id FROM users WHERE name = 'Artem' AND surname = 'Artemov'), 
-            (SELECT id FROM users WHERE name = 'Ivan' AND surname = 'Ivanov'), 
+            (SELECT id FROM users WHERE login = 'Artem'), 
+            (SELECT id FROM users WHERE login = 'Ivan'), 
             'Hello, Ivan!',
             0
         ), 
         (
-            (SELECT id FROM users WHERE name = 'Fedor' AND surname = 'Fedorov'), 
-            (SELECT id FROM users WHERE name = 'Lika' AND surname = 'Likova'), 
+            (SELECT id FROM users WHERE login = 'Fedor'), 
+            (SELECT id FROM users WHERE login = 'Lika'), 
             'Hello, Lika! How are you?',
             0
         );
@@ -124,11 +119,10 @@ VALUES (
 
 5. Запросы к БД
 
-Запрос, который выведет имя, фамилию, хэш пароля:  
+Запрос, который выведет логин, хэш пароля:  
 ```sql
 SELECT 
-    users.name as name,
-    users.surname as surname,
+    users.login as login,
     passwords.pass_hash as hash
 FROM users 
 LEFT JOIN passwords 
