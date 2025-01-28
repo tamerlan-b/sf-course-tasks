@@ -328,14 +328,14 @@ bool ChatClient::get_users()
 
 void show_message(const Message& msg) noexcept
 {
-    cout << msg.datetime << '\n';
+    cout << msg.created_at << '\n';
     // msg.sender == user_name ? cout << termcolor::magenta : cout << termcolor::cyan;
-    cout << msg.sender << ": "; // << termcolor::reset;
-    cout << msg.text;
-    if (msg.receiver != "")
+    cout << msg.sender_id << ": "; // << termcolor::reset;
+    cout << msg.content;
+    if (msg.receiver_id >= 0)
     {
         // cout << termcolor::yellow << " (to: " << msg.receiver << ")" << termcolor::reset;
-        cout << " (to: " << msg.receiver << ")";
+        cout << " (to: " << msg.receiver_id << ")";
     }
     cout << "\n";
 }
@@ -411,7 +411,7 @@ bool ChatClient::send_msg(const std::string& login)
     cin.ignore();
     std::getline(cin, text);
 
-    Message msg(login, this->users[user_index].login, text, DateTime(std::time(0)));
+    Message msg(-1, user_id, text, DateTime(std::time(0)));
 
     // Формируем запрос и отправляем на сервер
     sf::NetMessage req_msg;

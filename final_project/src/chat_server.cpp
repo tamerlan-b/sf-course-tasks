@@ -77,7 +77,19 @@ int ChatServer::find_user(const std::string& login) const noexcept
     return -1;
 }
 
-bool ChatServer::sign_in_handle(int socket, const std::string& msg, std::string& client_login)
+int ChatServer::find_user(int id) const noexcept
+{
+    for (size_t i = 0; i < this->users.size(); ++i)
+    {
+        if (users[i].id == id)
+        {
+            return i;
+        }
+    }
+    return -1;
+}
+
+bool ChatServer::sign_in_handle(int socket, const std::string& msg, int& user_id)
 {
     // Выделяем из сообщения логин и хэш пароля
     const auto* net_msg = reinterpret_cast<const sf::NetMessage*>(msg.data());
@@ -89,12 +101,12 @@ bool ChatServer::sign_in_handle(int socket, const std::string& msg, std::string&
         sstr >> pass_hash;
     }
     // Проверяем, что такой логин есть
-    int user_id = this->find_user(login);
+    int user_index = this->find_user(login);
     // Проверяем, что хэш пароля совпадает
     bool is_correct_user = false;
-    if (user_id >= 0)
+    if (user_index >= 0)
     {
-        is_correct_user = this->users[user_id].pass_hash == pass_hash;
+        is_correct_user = this->users[user_index].pass_hash == pass_hash;
     }
     // Если все ок, то сохраняем логин и отправляем пользователю OK
     sf::NetMessage resp_msg;
@@ -103,6 +115,7 @@ bool ChatServer::sign_in_handle(int socket, const std::string& msg, std::string&
     {
         std::cout << "Пользователь " << login << " авторизован, отправляем ответ" << '\n';
         resp_msg.status = sf::MsgStatus::OK;
+        user_id = this->users[user_index].id;
     }
     else
     {
@@ -111,7 +124,6 @@ bool ChatServer::sign_in_handle(int socket, const std::string& msg, std::string&
         resp_msg.status = sf::MsgStatus::ERROR;
     }
 
-    client_login = std::move(login);
     std::string response(reinterpret_cast<char*>(&resp_msg));
     if (!TcpServer::send_msg(socket, response))
     {
@@ -120,7 +132,7 @@ bool ChatServer::sign_in_handle(int socket, const std::string& msg, std::string&
     return is_correct_user;
 }
 
-bool ChatServer::sign_up_handle(int socket, const std::string& msg, std::string& client_login)
+bool ChatServer::sign_up_handle(int socket, const std::string& msg, int& user_id)
 {
     // Считываем логин
     const auto* req_msg = reinterpret_cast<const sf::NetMessage*>(msg.data());
@@ -178,20 +190,19 @@ bool ChatServer::sign_up_handle(int socket, const std::string& msg, std::string&
         std::stringstream sstr(req_msg2->data);
         sstr >> login;
         sstr >> pass_hash;
-        // TODO: добавить доп поля
     }
 
     // TODO: синхронизировать доступ из разных потоков
     // Сохраняем пользователя в файл пользователей
     User user(login, pass_hash);
     user.id = this->users.size();
-    this->users.push_back(user);
+    user_id = user.id;
     this->data_manager->save_user(user);
-    client_login = std::move(login);
+    this->users.push_back(std::move(user));
 
     // Авторизуем пользователя (привязываем сокет к этому пользователю)
     {
-        std::cout << "Пользователь " << client_login << " создан, отправляем ответ" << '\n';
+        std::cout << "Пользователь " << user_id << " создан, отправляем ответ" << '\n';
         sf::NetMessage resp_msg;
         resp_msg.type = sf::MsgType::SIGN_UP;
         resp_msg.status = sf::MsgStatus::OK;
@@ -231,7 +242,7 @@ bool ChatServer::get_users_handle(int socket)
     return true;
 }
 
-bool ChatServer::get_history_handle(int socket, const std::string& client_login)
+bool ChatServer::get_history_handle(int user_id, int socket)
 {
     // Формируем сообщение
     std::stringstream sstr;
@@ -239,7 +250,7 @@ bool ChatServer::get_history_handle(int socket, const std::string& client_login)
     // Показываем сообщения отправленные/адресованные текущему юзеру или адресованные всем
     for (const auto& msg : this->messages)
     {
-        if (msg.sender == client_login || msg.receiver == client_login || msg.receiver == "")
+        if (msg.sender_id == user_id || msg.receiver_id == user_id)
         {
             sstr << msg << '\n';
         }
@@ -259,12 +270,12 @@ bool ChatServer::get_history_handle(int socket, const std::string& client_login)
         std::cout << "Ошибка при отправке ответа" << '\n';
     }
 
-    std::cout << "Отправили список сообщений пользователю " << client_login << '\n';
+    std::cout << "Отправили список сообщений пользователю " << user_id << '\n';
 
     return true;
 }
 
-bool ChatServer::send_msg_handle(int socket, const std::string& msg)
+bool ChatServer::send_msg_handle(int user_id, int socket, const std::string& msg)
 {
     // Распаковываем сообщение
     const auto* net_msg = reinterpret_cast<const sf::NetMessage*>(msg.data());
@@ -274,8 +285,9 @@ bool ChatServer::send_msg_handle(int socket, const std::string& msg)
         ss_msg << net_msg->data;
         ss_msg >> message;
     }
+    message.sender_id = user_id; // Заполняем сами id отправителя
     // Если пользователя не существует, то отправляем ошибку
-    if (this->find_user(message.receiver) < 0)
+    if (this->find_user(message.receiver_id) < 0)
     {
         std::cout << "Выбранного пользователя не существует (" << '\n';
         sf::NetMessage resp_msg;
@@ -303,10 +315,10 @@ bool ChatServer::send_msg_handle(int socket, const std::string& msg)
 
     // Отправляем сообщение получателю
     // Если пользователь онлайн (есть его сокет), то отправляем сообщение ему
-    if (this->users_sockets.find(message.receiver) != this->users_sockets.end())
+    if (this->users_sockets.find(message.receiver_id) != this->users_sockets.end())
     {
-        std::cout << "Отправляем сообщение пользователю " << message.receiver << "..." << '\n';
-        if (!TcpServer::send_msg(this->users_sockets[message.receiver], msg))
+        std::cout << "Отправляем сообщение пользователю " << message.receiver_id << "..." << '\n';
+        if (!TcpServer::send_msg(this->users_sockets[message.receiver_id], msg))
         {
             std::cout << "Ошибка при отправке ответа" << '\n';
         }
@@ -334,7 +346,7 @@ void ChatServer::client_handler(int socket)
 {
     std::cout << "Подключился клиент по сокету " << socket << '\n';
 
-    std::string client_login;
+    int user_id = -1;
 
     std::string msg;
     while (true)
@@ -350,8 +362,8 @@ void ChatServer::client_handler(int socket)
         {
             // TODO: предусмотреть возможность повторной авторизации
             std::cout << "Похоже, что клиент отключился..." << '\n';
-            this->users_sockets.erase(client_login);
-            std::cout << "Удален сокет для пользователя " << client_login << '\n';
+            this->users_sockets.erase(user_id);
+            std::cout << "Удален сокет для пользователя " << user_id << '\n';
             return;
         }
         auto* net_msg = reinterpret_cast<sf::NetMessage*>(msg.data());
@@ -361,30 +373,30 @@ void ChatServer::client_handler(int socket)
             case sf::MsgType::SIGN_IN:
                 {
                     std::cout << "SIGN_IN" << '\n';
-                    this->sign_in_handle(socket, msg, client_login);
+                    this->sign_in_handle(socket, msg, user_id);
                     break;
                 }
             case sf::MsgType::SIGN_UP:
                 {
                     std::cout << "SIGN_UP" << '\n';
-                    this->sign_up_handle(socket, msg, client_login);
+                    this->sign_up_handle(socket, msg, user_id);
                     break;
                 }
             default:
                 break;
         }
 
-        if (client_login.empty())
+        if (user_id < 0)
         {
             continue;
         }
         else
         {
             // Если у этого пользователя не было сокета
-            if (this->users_sockets.find(client_login) == this->users_sockets.end())
+            if (this->users_sockets.find(user_id) == this->users_sockets.end())
             {
-                std::cout << "Для пользователя " << client_login << " сохранен сокет " << socket << '\n';
-                this->users_sockets.emplace(client_login, socket);
+                std::cout << "Для пользователя " << user_id << " сохранен сокет " << socket << '\n';
+                this->users_sockets.emplace(user_id, socket);
             }
         }
 
@@ -396,7 +408,7 @@ void ChatServer::client_handler(int socket)
             case sf::MsgType::GET_HISTORY:
                 {
                     std::cout << "GET_HISTORY" << '\n';
-                    this->get_history_handle(socket, client_login);
+                    this->get_history_handle(user_id, socket);
                     break;
                 }
             case sf::MsgType::GET_USERS:
@@ -408,7 +420,7 @@ void ChatServer::client_handler(int socket)
             case sf::MsgType::SEND_MSG:
                 {
                     std::cout << "SEND_MSG" << '\n';
-                    this->send_msg_handle(socket, msg);
+                    this->send_msg_handle(user_id, socket, msg);
                     break;
                 }
             default:

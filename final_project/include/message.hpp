@@ -8,20 +8,22 @@
 class Message
 {
   public:
-    std::string sender;
-    std::string receiver;
-    std::string text;
-    DateTime datetime;
+    int id;
+    int sender_id;
+    int receiver_id;
+    std::string content;
+    DateTime created_at;
+    int condition;
 
-    // int id;
-    // int sender_id;
-    // int reciever_id;
-    // std::string content;
-    // DateTime created_at;
-    // int condition;
+    enum Condition
+    {
+        SENT = 0,
+        RECEIVED = 1,
+        READ = 2
+    };
 
-    Message() = default;
-    Message(std::string sender, std::string receiver, std::string text, DateTime datetime);
+    Message();
+    Message(int sender_id, int receiver_id, std::string content, DateTime created_at, int condition = Condition::SENT);
     virtual ~Message() = default;
     [[nodiscard]] bool is_empty() const noexcept;
 
