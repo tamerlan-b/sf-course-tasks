@@ -37,7 +37,7 @@ class FileDataManager : public IDataManager
         create_folder_if_not_exist(this->msgs_path);
     }
 
-    void save_user(const User& user) override
+    void save_user(User& user) override
     {
         std::fstream file(this->users_path, std::ios::out | std::ios::app);
         if (!file)
@@ -82,7 +82,7 @@ class FileDataManager : public IDataManager
         }
     }
 
-    void save_msg(const Message& msg) override
+    void save_msg(Message& msg) override
     {
         std::fstream file(this->msgs_path, std::ios::out | std::ios::app);
         if (!file)

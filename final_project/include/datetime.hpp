@@ -15,6 +15,8 @@ struct Date
 
     friend std::istream& operator>>(std::istream& is, Date& d);
     friend std::ostream& operator<<(std::ostream& os, const Date& d);
+
+    [[nodiscard]] std::string to_string() const;
 };
 
 struct Time
@@ -27,6 +29,8 @@ struct Time
 
     friend std::istream& operator>>(std::istream& is, Time& t);
     friend std::ostream& operator<<(std::ostream& os, const Time& t);
+
+    [[nodiscard]] std::string to_string() const;
 };
 
 struct DateTime
@@ -41,4 +45,8 @@ struct DateTime
 
     friend std::istream& operator>>(std::istream& is, DateTime& dt);
     friend std::ostream& operator<<(std::ostream& os, const DateTime& dt);
+
+    [[nodiscard]] std::string to_string() const;
+
+    static DateTime parse(std::string dt_str);
 };

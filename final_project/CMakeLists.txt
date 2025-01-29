@@ -22,7 +22,7 @@ add_executable(chat_server
     src/user.cpp
 )
 
-target_link_libraries(chat_server PUBLIC TcpLib DateTimeLib LoggerLib)
+target_link_libraries(chat_server PUBLIC TcpLib DateTimeLib LoggerLib -lpqxx -lpq)
 
 target_include_directories(chat_server PUBLIC
                           "${PROJECT_BINARY_DIR}"

@@ -1,7 +1,7 @@
 #include "message.hpp"
 #include <utility>
 
-Message::Message() : sender_id(-1), receiver_id(-1) {}
+Message::Message() : sender_id(-1), receiver_id(-1), condition(0) {}
 
 Message::Message(int sender_id, int receiver_id, std::string content, DateTime created_at, int condition)
     : sender_id(sender_id), receiver_id(receiver_id), content(std::move(content)), created_at(created_at)

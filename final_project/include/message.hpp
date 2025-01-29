@@ -23,7 +23,7 @@ class Message
     };
 
     Message();
-    Message(int sender_id, int receiver_id, std::string content, DateTime created_at, int condition = Condition::SENT);
+    Message(int sender_id, int receiver_id, std::string content, DateTime created_at, int condition = 0);
     virtual ~Message() = default;
     [[nodiscard]] bool is_empty() const noexcept;
 

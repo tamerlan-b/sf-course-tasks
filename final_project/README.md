@@ -34,8 +34,13 @@
 - [termcolor](https://github.com/ikalnytskyi/termcolor/tree/master)
 - ~~[nlohmann/json](https://github.com/nlohmann/json)~~
 - [PicoSHA2](https://github.com/okdshin/PicoSHA2)
+- [libpqxx](https://github.com/jtv/libpqxx)
 
 ### Компиляция
+
+```bash
+sudo apt-get install libpqxx-dev
+```
 
 ```bash
 mkdir build

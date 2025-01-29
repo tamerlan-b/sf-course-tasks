@@ -1,5 +1,6 @@
 #include "chat_server.hpp"
 #include "chat_msgs.hpp"
+#include "db_data_manager.hpp"
 #include "file_data_manager.hpp"
 #include "logger.hpp"
 #include "logger_interface.hpp"
@@ -196,8 +197,8 @@ bool ChatServer::sign_up_handle(int socket, const std::string& msg, int& user_id
     // Сохраняем пользователя в файл пользователей
     User user(login, pass_hash);
     user.id = this->users.size();
-    user_id = user.id;
     this->data_manager->save_user(user);
+    user_id = user.id;
     this->users.push_back(std::move(user));
 
     // Авторизуем пользователя (привязываем сокет к этому пользователю)
@@ -327,6 +328,12 @@ bool ChatServer::send_msg_handle(int user_id, int socket, const std::string& msg
     }
     // TODO: реализовать отправку сообщений пользователю, когда он не онлайн
 
+    // FIXME: исправить баг
+    if (message.condition < 0 || message.condition > 2)
+    {
+        message.condition = 0;
+    }
+    cout << "Message: " << message << '\n';
     // Сохраняем сообщение в файл
     this->data_manager->save_msg(message);
 
@@ -492,8 +499,9 @@ int main(int argc, const char** argv)
     std::cout << "Чат запущен в ОС " << PLATFORM_NAME << std::endl;
     print_os_info();
 
-    std::unique_ptr<IDataManager> data_manager =
-        std::make_unique<FileDataManager>("chat_data/users.txt", "chat_data/messages.txt");
+    // std::unique_ptr<IDataManager> data_manager =
+    //     std::make_unique<FileDataManager>("chat_data/users.txt", "chat_data/messages.txt");
+    std::unique_ptr<IDataManager> data_manager = std::make_unique<DbDataManager>("sf_chat", "db_manager", "db_manager");
     std::unique_ptr<sf::ILogger> logger = std::make_unique<skillfactory::Logger>();
     ChatServer server(logger, data_manager);
     server.run();
