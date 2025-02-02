@@ -5,34 +5,14 @@
 #include <string>
 #include <vector>
 
+#include "chat_server.h"
+#include "user.h"
+#include "message.h"
+#include <memory>
+
 namespace Ui
 {
     class MainWindow;
-}
-
-namespace test
-{
-    class Message
-    {
-      public:
-        std::string sender;
-        std::string receiver;
-        std::string content;
-
-        Message(std::string sender, std::string receiver, std::string content):
-            sender(sender), receiver(receiver), content(content){}
-    };
-
-    class User
-    {
-      public:
-        int id;
-        std::string login;
-        User(std::string login): login(login)
-        {
-
-        }
-    };
 }
 
 class MainWindow : public QMainWindow
@@ -43,19 +23,34 @@ class MainWindow : public QMainWindow
     explicit MainWindow(QWidget* parent = nullptr);
     ~MainWindow();
 \
-        private slots:
-                        void on_disableButton_clicked();
+    private slots:
+    void on_disableButton_clicked();
+    void on_banButton_clicked();
 
-          void on_banButton_clicked();
-
-        private:
+    private:
     Ui::MainWindow* ui;
 
-    std::vector<test::User> users;
-    std::vector<test::Message> messages;
+    std::vector<User> users;
+    std::vector<Message> messages;
 
     void showUsers();
     void showMessages();
+    void showMessages(const std::vector<Message>& msgs);
+
+    void onUsersUpdate(const std::vector<User>& users);
+    void onMessagesUpdate(const std::vector<Message>& msgs);
+
+  signals:
+    void update_users_signal();
+    void update_messages_signal();
+  public slots:
+    void update_users_slot();
+    void update_messages_slot();
+
+  private:
+    std::shared_ptr<ChatServer> server;
+
+    int find_user(const std::string& login) const noexcept;
 };
 
 #endif // MAINWINDOW_H

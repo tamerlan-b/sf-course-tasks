@@ -40,9 +40,11 @@ qt5_add_resources(QRC ${RC_FILES})
 # )
 
 add_executable(ChatServer ${SRC_FILES} ${HEADERS_FILES} ${RC_FILES} ${UI_FILES}
-    sources/mainwindow.h sources/mainwindow.cpp sources/mainwindow.ui)
+    sources/mainwindow.h sources/mainwindow.cpp sources/mainwindow.ui
+    sources/custom_event.h)
 
 target_link_libraries(ChatServer
     PUBLIC
     ${CHAT_LIBRARIES}
+     -lpqxx -lpq
 )
