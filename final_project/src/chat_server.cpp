@@ -9,6 +9,7 @@
 #include <cstring>
 #include <iostream>
 #include <memory>
+#include <mutex>
 #include <sstream>
 #include <string>
 #include <thread>
@@ -68,9 +69,10 @@ ChatServer::ChatServer(std::unique_ptr<skillfactory::ILogger>& logger, std::uniq
 
 int ChatServer::find_user(const std::string& login) const noexcept
 {
+    std::shared_lock lock(this->users_mutex);
     for (size_t i = 0; i < this->users.size(); ++i)
     {
-        if (users[i].login == login)
+        if (this->users[i].login == login)
         {
             return i;
         }
@@ -80,9 +82,10 @@ int ChatServer::find_user(const std::string& login) const noexcept
 
 int ChatServer::find_user(int id) const noexcept
 {
+    std::shared_lock lock(this->users_mutex);
     for (size_t i = 0; i < this->users.size(); ++i)
     {
-        if (users[i].id == id)
+        if (this->users[i].id == id)
         {
             return i;
         }
@@ -90,7 +93,7 @@ int ChatServer::find_user(int id) const noexcept
     return -1;
 }
 
-bool ChatServer::sign_in_handle(int socket, const std::string& msg, int& user_id)
+bool ChatServer::sign_in_handle(int socket, const std::string& msg, int& user_id) const
 {
     // Выделяем из сообщения логин и хэш пароля
     const auto* net_msg = reinterpret_cast<const sf::NetMessage*>(msg.data());
@@ -107,6 +110,7 @@ bool ChatServer::sign_in_handle(int socket, const std::string& msg, int& user_id
     bool is_correct_user = false;
     if (user_index >= 0)
     {
+        std::shared_lock lock(this->users_mutex);
         is_correct_user = this->users[user_index].pass_hash == pass_hash;
     }
     // Если все ок, то сохраняем логин и отправляем пользователю OK
@@ -116,6 +120,7 @@ bool ChatServer::sign_in_handle(int socket, const std::string& msg, int& user_id
     {
         std::cout << "Пользователь " << login << " авторизован, отправляем ответ" << '\n';
         resp_msg.status = sf::MsgStatus::OK;
+        std::shared_lock lock(this->users_mutex);
         user_id = this->users[user_index].id;
     }
     else
@@ -195,11 +200,14 @@ bool ChatServer::sign_up_handle(int socket, const std::string& msg, int& user_id
 
     // TODO: синхронизировать доступ из разных потоков
     // Сохраняем пользователя в файл пользователей
-    User user(login, pass_hash);
-    user.id = this->users.size();
-    this->data_manager->save_user(user);
-    user_id = user.id;
-    this->users.push_back(std::move(user));
+    {
+        std::unique_lock lock(this->users_mutex); // TODO: std::scoped_lock
+        User user(login, pass_hash);
+        user.id = this->users.size();
+        this->data_manager->save_user(user);
+        user_id = user.id;
+        this->users.push_back(std::move(user));
+    }
 
     // Авторизуем пользователя (привязываем сокет к этому пользователю)
     {
@@ -216,18 +224,21 @@ bool ChatServer::sign_up_handle(int socket, const std::string& msg, int& user_id
     return true;
 }
 
-bool ChatServer::get_users_handle(int socket)
+bool ChatServer::get_users_handle(int socket) const
 {
     // Формируем сообщение
     sf::NetMessage resp_msg;
     resp_msg.type = sf::MsgType::GET_USERS;
     resp_msg.status = sf::MsgStatus::OK;
     std::string users_str;
-    users_str += std::to_string(this->users.size()) + '\n';
 
-    for (const auto& user : this->users)
     {
-        users_str += std::to_string(user.id) + ' ' + user.login + '\n';
+        std::shared_lock lock(this->users_mutex);
+        users_str += std::to_string(this->users.size()) + '\n';
+        for (const auto& user : this->users)
+        {
+            users_str += std::to_string(user.id) + ' ' + user.login + '\n';
+        }
     }
     strcpy(resp_msg.data, users_str.data());
     std::string response(reinterpret_cast<char*>(&resp_msg));
@@ -243,17 +254,20 @@ bool ChatServer::get_users_handle(int socket)
     return true;
 }
 
-bool ChatServer::get_history_handle(int user_id, int socket)
+bool ChatServer::get_history_handle(int user_id, int socket) const
 {
     // Формируем сообщение
     std::stringstream sstr;
 
     // Показываем сообщения отправленные/адресованные текущему юзеру или адресованные всем
-    for (const auto& msg : this->messages)
     {
-        if (msg.sender_id == user_id || msg.receiver_id == user_id)
+        std::shared_lock lock(this->messages_mutex);
+        for (const auto& msg : this->messages)
         {
-            sstr << msg << '\n';
+            if (msg.sender_id == user_id || msg.receiver_id == user_id)
+            {
+                sstr << msg << '\n';
+            }
         }
     }
 
@@ -316,6 +330,7 @@ bool ChatServer::send_msg_handle(int user_id, int socket, const std::string& msg
 
     // Отправляем сообщение получателю
     // Если пользователь онлайн (есть его сокет), то отправляем сообщение ему
+    this->users_sockets_mutex.lock_shared();
     if (this->users_sockets.find(message.receiver_id) != this->users_sockets.end())
     {
         std::cout << "Отправляем сообщение пользователю " << message.receiver_id << "..." << '\n';
@@ -326,6 +341,7 @@ bool ChatServer::send_msg_handle(int user_id, int socket, const std::string& msg
 
         // std::cout << "Пересылаем сообщение пользователю " << message.receiver << '\n';
     }
+    this->users_sockets_mutex.unlock_shared();
     // TODO: реализовать отправку сообщений пользователю, когда он не онлайн
 
     // FIXME: исправить баг
@@ -344,7 +360,10 @@ bool ChatServer::send_msg_handle(int user_id, int socket, const std::string& msg
     }
 
     // Сохраняем сообщение в массив
-    this->messages.push_back(std::move(message));
+    {
+        std::unique_lock lock(this->messages_mutex);
+        this->messages.push_back(std::move(message));
+    }
 
     return true;
 }
@@ -367,6 +386,7 @@ void ChatServer::client_handler(int socket)
         }
         if (msg.empty())
         {
+            std::unique_lock lock(this->users_sockets_mutex);
             // TODO: предусмотреть возможность повторной авторизации
             std::cout << "Похоже, что клиент отключился..." << '\n';
             this->users_sockets.erase(user_id);
@@ -399,6 +419,7 @@ void ChatServer::client_handler(int socket)
         }
         else
         {
+            std::unique_lock lock(this->users_sockets_mutex);
             // Если у этого пользователя не было сокета
             if (this->users_sockets.find(user_id) == this->users_sockets.end())
             {
@@ -452,19 +473,15 @@ void ChatServer::accept_clients()
     }
 }
 
-void ChatServer::wait_for_stop()
+void ChatServer::wait_for_stop() const noexcept
 {
     std::cout << "Нажмите \'q\' для остановки сервера" << '\n';
     std::string exit_msg;
-    while (true)
+    do
     {
         std::cin >> exit_msg;
-        if (exit_msg == "q")
-        {
-            std::cout << "Сервер отключается" << std::endl;
-            break;
-        }
-    }
+    } while (exit_msg != "q");
+    std::cout << "Сервер отключается" << "\n";
 }
 
 void ChatServer::run()
@@ -493,7 +510,7 @@ void print_os_info()
 #endif
 }
 
-int main(int argc, const char** argv)
+int main([[maybe_unused]] int argc, [[maybe_unused]] const char** argv)
 {
     setlocale(LC_ALL, "");
     std::cout << "Чат запущен в ОС " << PLATFORM_NAME << std::endl;

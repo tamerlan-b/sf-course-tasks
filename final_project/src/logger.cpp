@@ -1,5 +1,6 @@
 #include "logger.hpp"
 #include <ios>
+#include <mutex>
 #include <string>
 
 namespace skillfactory
@@ -9,15 +10,13 @@ namespace skillfactory
 
     void Logger::write(const std::string& line)
     {
-        this->mut.lock();
+        std::unique_lock lock(this->mut);
         this->log_file << line << '\n';
-        this->mut.unlock();
     }
     bool Logger::read(std::string& line)
     {
-        this->mut.lock_shared();
+        std::shared_lock lock(this->mut);
         std::getline(this->log_file, line);
-        this->mut.unlock_shared();
         return this->log_file.eof();
     }
 
