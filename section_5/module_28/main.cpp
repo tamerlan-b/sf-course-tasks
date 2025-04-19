@@ -69,6 +69,7 @@ void mergeSort(int* arr, int l, int r)
     {
         auto f = std::async(std::launch::async, [&]() { mergeSort(arr, l, m); });
         mergeSort(arr, m + 1, r);
+        f.get(); // ожидаем завершения потока перед слиянием
     }
     else // Выполняем синхронно
     {
